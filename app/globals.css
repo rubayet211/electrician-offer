@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b1726;
+  --color-charcoal: #141b24;
+
+  --color-steel-50: #f8fafc;
+  --color-steel-100: #f1f5f9;
+  --color-steel-200: #e2e8f0;
+  --color-steel-300: #cbd5e1;
+  --color-steel-400: #94a3b8;
+  --color-steel-500: #64748b;
+  --color-steel-600: #475569;
+  --color-steel-700: #334155;
+  --color-steel-800: #1e293b;
+  --color-steel-900: #0f172a;
+
+  --color-paper: #ffffff;
+  --color-paper-subtle: #f6f8fa;
+
+  --color-amber: #f2a516;
+  --color-amber-strong: #d98e00;
+
+  --color-signal-blue: #2563eb;
+  --color-success: #15803d;
+  --color-danger: #b42318;
+
+  --font-display: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-ibm-plex-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+
+  --shadow-technical: 0 1px 3px 0 rgba(11, 23, 38, 0.08), 0 1px 2px -1px rgba(11, 23, 38, 0.08);
+}
+
+@layer base {
+  :root {
+    --blueprint-line: rgba(15, 23, 42, 0.05);
+    color: var(--color-ink);
+    background-color: var(--color-paper);
+    font-family: var(--font-sans);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  /* Universal focus-visible ring: 2px signal blue + 2px offset */
+  :focus-visible {
+    outline: 2px solid #2563eb !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Fluid typography */
+  h1,
+  .font-h1 {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 1.4rem + 2.5vw, 3rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+  }
+
+  h2,
+  .font-h2 {
+    font-family: var(--font-display);
+    font-size: clamp(1.6rem, 1.2rem + 1.8vw, 2.25rem);
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+  }
+
+  h3,
+  .font-h3 {
+    font-family: var(--font-display);
+    font-size: clamp(1.3rem, 1.1rem + 1.1vw, 1.75rem);
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.015em;
+  }
+
+  h4,
+  .font-h4 {
+    font-family: var(--font-display);
+    font-size: clamp(1.1rem, 1rem + 0.6vw, 1.35rem);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: clamp(1rem, 0.98rem + 0.15vw, 1.0625rem);
+    line-height: 1.6;
+    color: var(--color-ink);
+  }
+}
+
+/* Technical motif utilities */
+.bg-blueprint {
+  background-image:
+    linear-gradient(to right, var(--blueprint-line, rgba(15, 23, 42, 0.05)) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--blueprint-line, rgba(15, 23, 42, 0.05)) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+[data-tone="dark"] .bg-blueprint,
+.dark-tone .bg-blueprint,
+.bg-ink .bg-blueprint,
+.bg-charcoal .bg-blueprint {
+  --blueprint-line: rgba(255, 255, 255, 0.04);
+}
+
+.hairline {
+  border-top: 1px solid #e2e8f0;
+}
+
+[data-tone="dark"] .hairline,
+.dark-tone .hairline,
+.bg-ink .hairline,
+.bg-charcoal .hairline {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Corner ticks / registration marks */
+.corner-ticks {
+  position: relative;
+}
+
+.corner-ticks::before,
+.corner-ticks::after {
+  content: "";
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.corner-ticks::before {
+  top: -1px;
+  left: -1px;
+  border-top: 1.5px solid currentColor;
+  border-left: 1.5px solid currentColor;
+}
+
+.corner-ticks::after {
+  bottom: -1px;
+  right: -1px;
+  border-bottom: 1.5px solid currentColor;
+  border-right: 1.5px solid currentColor;
+}
+
+/* Technical motion and reveal */
+@keyframes technical-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reveal {
+  animation: technical-reveal 200ms cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+/* Disabled motion under prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
