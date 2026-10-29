@@ -64,11 +64,11 @@ export function Header() {
               <Zap className="w-4 h-4 fill-amber/20" />
             </span>
             <div className="flex flex-col">
-              <span className="font-display font-bold text-base sm:text-lg tracking-tight text-paper group-hover:text-amber transition-colors duration-150">
+              <span className="font-display font-bold text-xs min-[360px]:text-sm sm:text-lg tracking-tight text-paper group-hover:text-amber transition-colors duration-150 leading-tight line-clamp-2 max-w-[160px] min-[360px]:max-w-none">
                 {business.name}
               </span>
               {parsedClientConfig.positioning?.tagline && (
-                <span className="font-mono text-[10px] uppercase tracking-widest text-steel-400">
+                <span className="hidden min-[360px]:block font-mono text-[10px] uppercase tracking-widest text-steel-400">
                   {parsedClientConfig.positioning.tagline}
                 </span>
               )}
@@ -120,7 +120,7 @@ export function Header() {
           <div className="flex sm:hidden items-center gap-2">
             <CallLink
               phone={business.phone}
-              className="p-2 text-amber hover:text-amber-strong rounded-sm focus-visible:outline-2 focus-visible:outline-signal-blue"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-amber hover:text-amber-strong rounded-sm focus-visible:outline-2 focus-visible:outline-signal-blue"
               aria-label={`Call ${business.phoneDisplay}`}
             >
               <Phone className="w-5 h-5" aria-hidden="true" />
@@ -133,7 +133,7 @@ export function Header() {
               aria-expanded={mobileMenuOpen}
               aria-controls="mobile-nav-menu"
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              className="p-2 text-steel-300 hover:text-paper hover:bg-white/5 rounded-sm focus-visible:outline-2 focus-visible:outline-signal-blue"
+              className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center p-2 text-steel-300 hover:text-paper hover:bg-white/5 rounded-sm focus-visible:outline-2 focus-visible:outline-signal-blue"
             >
               {mobileMenuOpen ? (
                 <X className="w-6 h-6" aria-hidden="true" />
