@@ -11,6 +11,8 @@ export async function sendLeadNotificationEmail(
   lead: Lead,
 ): Promise<{ ok: boolean; providerId?: string; error?: string }> {
   if (lead.isDemo) return { ok: true };
+  if (lead.isTest && !config.notifications.stagingRecipients?.length)
+    return { ok: false, error: "MissingStagingRecipients" };
   if (!process.env.RESEND_API_KEY) return { ok: false, error: "MissingApiKey" };
   try {
     const inquiryDetails = lead.details;
@@ -49,7 +51,7 @@ export async function sendLeadNotificationEmail(
       },
       body: JSON.stringify({
         from: config.notifications.fromAddress,
-        to: config.notifications.recipients,
+        to: lead.isTest ? config.notifications.stagingRecipients : config.notifications.recipients,
         subject: `Estimate request ${lead.reference}`,
         text: lines.join("\n"),
         html: lines.map((line) => `<p>${escapeHtml(line)}</p>`).join(""),
@@ -81,12 +83,16 @@ export async function retryPendingNotifications(
   let attempted = 0;
   for (const lead of leads) {
     if (Date.now() >= deadline) break;
-    if (lead.notificationAttempts >= 5) {
-      await store.leads.setNotification(lead.id, "failed_final");
-      continue;
-    }
     if (lead.isDemo) {
       await store.leads.setNotification(lead.id, "skipped_demo");
+      continue;
+    }
+    if (lead.isTest && !config.notifications.stagingRecipients?.length) {
+      await store.leads.setNotification(lead.id, "skipped_test");
+      continue;
+    }
+    if (lead.notificationAttempts >= 5) {
+      await store.leads.setNotification(lead.id, "failed_final");
       continue;
     }
     if (

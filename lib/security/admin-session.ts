@@ -1,10 +1,12 @@
-import { createHmac, scrypt, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, scrypt, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { adminPasswordHash } from "@/lib/security/admin-password";
 
 const lifetime = 8 * 60 * 60 * 1000;
+export { adminPasswordHash } from "@/lib/security/admin-password";
 export function adminEnabled() {
-  return !!process.env.ADMIN_PASSWORD_HASH && !!process.env.ADMIN_SESSION_SECRET;
+  return !!adminPasswordHash() && !!process.env.ADMIN_SESSION_SECRET;
 }
 export async function verifyAdminPassword(password: string, encoded: string): Promise<boolean> {
   const [algorithm, n, r, p, saltText, hashText, extra] = encoded.split("$");
@@ -46,7 +48,11 @@ export async function verifyAdminPassword(password: string, encoded: string): Pr
 }
 export function signAdminSession(secret: string, now = Date.now()): string {
   const expiry = String(now + lifetime);
-  return `${expiry}.${createHmac("sha256", secret).update(expiry).digest("base64url")}`;
+  const fingerprint = createHash("sha256")
+    .update(adminPasswordHash() ?? "")
+    .digest("base64url");
+  const payload = `${expiry}.${fingerprint}`;
+  return `${payload}.${createHmac("sha256", secret).update(payload).digest("base64url")}`;
 }
 export function verifyAdminSession(
   token: string | undefined,
@@ -54,12 +60,22 @@ export function verifyAdminSession(
   now = Date.now(),
 ): boolean {
   if (!token || !secret) return false;
-  const [expiry, signature, extra] = token.split(".");
-  if (!expiry || !signature || extra !== undefined || !/^\d+$/.test(expiry)) return false;
+  const [expiry, fingerprint, signature, extra] = token.split(".");
+  if (!expiry || !fingerprint || !signature || extra !== undefined || !/^\d+$/.test(expiry))
+    return false;
+  if (
+    fingerprint !==
+    createHash("sha256")
+      .update(adminPasswordHash() ?? "")
+      .digest("base64url")
+  )
+    return false;
   const expiration = Number(expiry);
   if (!Number.isSafeInteger(expiration) || expiration <= now || expiration > now + lifetime)
     return false;
-  const expected = Buffer.from(createHmac("sha256", secret).update(expiry).digest("base64url"));
+  const expected = Buffer.from(
+    createHmac("sha256", secret).update(`${expiry}.${fingerprint}`).digest("base64url"),
+  );
   const supplied = Buffer.from(signature);
   return supplied.length === expected.length && timingSafeEqual(supplied, expected);
 }

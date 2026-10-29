@@ -42,9 +42,16 @@ function getNotificationStyle(status: string) {
   }
 }
 
-export default async function LeadDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function LeadDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ retry?: string }>;
+}) {
   await requireAdmin();
   const id = (await params).id;
+  const retry = (await searchParams).retry;
   const store = getStore();
   const lead = await store.leads.get(id);
   if (!lead) notFound();
@@ -63,6 +70,16 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
 
   return (
     <div className="space-y-6">
+      {retry === "sent" && <p role="status">Notification accepted by the email provider.</p>}
+      {retry === "failed" && (
+        <p role="status">Notification failed; check the notification status.</p>
+      )}
+      {retry === "skipped" && (
+        <p role="status">Test notification skipped: no staging recipients configured.</p>
+      )}
+      {retry === "unavailable" && (
+        <p role="status">Notification retry unavailable for this lead.</p>
+      )}
       {/* Navigation & Header */}
       <div>
         <Link
@@ -371,19 +388,20 @@ export default async function LeadDetail({ params }: { params: Promise<{ id: str
               </div>
             </form>
 
-            {["failed", "pending"].includes(lead.notificationStatus) && (
-              <div className="mt-6 border-t border-steel-200 pt-4">
-                <Notice type="info" title="Notification pending or failed" className="mb-3">
-                  Email dispatch for this inquiry has not completed successfully.
-                </Notice>
+            {!lead.isDemo &&
+              ["failed", "pending", "failed_final"].includes(lead.notificationStatus) && (
+                <div className="mt-6 border-t border-steel-200 pt-4">
+                  <Notice type="info" title="Notification pending or failed" className="mb-3">
+                    Email dispatch for this inquiry has not completed successfully.
+                  </Notice>
 
-                <form action={`/api/admin/leads/${encodeURIComponent(id)}/retry`} method="post">
-                  <Button type="submit" variant="secondary" size="md" className="w-full">
-                    Retry notification
-                  </Button>
-                </form>
-              </div>
-            )}
+                  <form action={`/api/admin/leads/${encodeURIComponent(id)}/retry`} method="post">
+                    <Button type="submit" variant="secondary" size="md" className="w-full">
+                      Retry notification
+                    </Button>
+                  </form>
+                </div>
+              )}
           </Card>
         </div>
       </div>

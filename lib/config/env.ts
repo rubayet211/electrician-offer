@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { adminPasswordHash } from "@/lib/security/admin-password";
 import { parsedClientConfig } from "@/config/client.config";
 import type { ClientConfig } from "@/types/client-config";
 const envSchema = z.object({
@@ -7,6 +8,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().optional(),
   IP_HASH_SECRET: z.string().optional(),
   ADMIN_PASSWORD_HASH: z.string().optional(),
+  ADMIN_PASSWORD_HASH_B64: z.string().optional(),
   ADMIN_SESSION_SECRET: z.string().optional(),
   AI_SESSION_SECRET: z.string().optional(),
   OPENROUTER_API_KEY: z.string().optional(),
@@ -27,14 +29,9 @@ export function assertProductionReady(
   const problems: string[] = [];
   if (JSON.stringify(config).includes("__REQUIRED__"))
     problems.push("Client config contains required placeholders");
-  for (const key of [
-    "IP_HASH_SECRET",
-    "ADMIN_PASSWORD_HASH",
-    "ADMIN_SESSION_SECRET",
-    "AI_SESSION_SECRET",
-    "CRON_SECRET",
-  ])
+  for (const key of ["IP_HASH_SECRET", "ADMIN_SESSION_SECRET", "AI_SESSION_SECRET", "CRON_SECRET"])
     if (!env[key]) problems.push(`${key} is required`);
+  if (!adminPasswordHash(env)) problems.push("ADMIN_PASSWORD_HASH is required");
   if (!env.DATABASE_URL && !allowsDemoMemory(config, env))
     problems.push("DATABASE_URL is required");
   const client = config as Partial<ClientConfig>;

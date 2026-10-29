@@ -18,6 +18,7 @@ const schema = z
   })
   .strict();
 export async function POST(req: Request) {
+  if (!parsedClientConfig.analytics.enabled) return new Response(null, { status: 204 });
   if (!isAllowedOrigin(req)) return new Response(null, { status: 403 });
   try {
     const bytes = await readBody(req, 4096);

@@ -45,6 +45,7 @@ export const clientConfigSchema = z.object({
       heroSubhead: text.optional(),
       tagline: text.optional(),
       closingHeadline: text.optional(),
+      nextSteps: z.array(text).optional(),
     })
     .default({
       heroHeadline: "Electrical Work Done Right. A Clear Way to Get Started.",
@@ -121,7 +122,11 @@ export const clientConfigSchema = z.object({
   ),
   faqs: z.array(faq),
   branding: z.object({ logo: text.optional(), primary: text, accent: text }),
-  notifications: z.object({ recipients: z.array(z.email()).min(1), fromAddress: text }),
+  notifications: z.object({
+    recipients: z.array(z.email()).min(1),
+    fromAddress: text,
+    stagingRecipients: z.array(z.email()).optional(),
+  }),
   seo: z.object({
     titleTemplate: text,
     defaultDescription: text,

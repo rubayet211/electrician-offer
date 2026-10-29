@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page } from "./fixtures";
 
 async function loginAsAdmin(page: Page) {
   await page.goto("/admin/login");
@@ -24,7 +24,9 @@ test.describe("Admin portal", () => {
     await expect(page).toHaveURL(/\/admin\/login/);
 
     // 2. /api/admin/* endpoints return 401
-    const exportRes = await page.request.get("/api/admin/leads/export?month=2026-10");
+    const exportRes = await page.request.get(
+      `/api/admin/leads/export?month=${new Date().toISOString().slice(0, 7)}`,
+    );
     expect(exportRes.status()).toBe(401);
 
     const updateRes = await page.request.post("/api/admin/leads/non-existent-id", {
@@ -100,17 +102,14 @@ test.describe("Admin portal", () => {
     // 2. Log in and verify in the leads list
     await loginAsAdmin(page);
 
-    const leadRow = page
-      .locator(`tr:has-text('${reference}'), div:has-text('${reference}')`)
-      .first();
+    const leadRow = page.locator(`tr:has-text("${reference}")`).first();
     await expect(leadRow).toBeVisible();
 
-    await expect(leadRow.locator(`text=${reference}`)).toBeVisible();
+    await expect(leadRow.getByRole("link", { name: reference })).toBeVisible();
     await expect(leadRow.locator("text=panel-upgrades")).toBeVisible();
     await expect(leadRow.locator("text=contact_form")).toBeVisible();
-    await expect(
-      leadRow.locator("text=skipped_demo").or(leadRow.locator("text=demo")),
-    ).toBeVisible();
+    await expect(leadRow.getByText("skipped_demo", { exact: true })).toBeVisible();
+    await expect(leadRow.getByText("demo", { exact: true })).toBeVisible();
   });
 
   test("(e) filter by service and by status", async ({ page }) => {
@@ -145,7 +144,7 @@ test.describe("Admin portal", () => {
     // Filter by EV charger service
     await page.locator("#filter-service").selectOption("ev-charger-installation");
     await page.locator("button:has-text('Filter')").click();
-    await expect(page.locator(`text=${evRef}`)).toBeVisible();
+    await expect(page.locator("tr").getByRole("link", { name: evRef })).toBeVisible();
 
     // Filter by another service (generator-installation)
     await page.locator("#filter-service").selectOption("generator-installation");
@@ -156,7 +155,7 @@ test.describe("Admin portal", () => {
     await page.locator("#filter-service").selectOption("");
     await page.locator("#filter-status").selectOption("new");
     await page.locator("button:has-text('Filter')").click();
-    await expect(page.locator(`text=${evRef}`)).toBeVisible();
+    await expect(page.locator("tr").getByRole("link", { name: evRef })).toBeVisible();
 
     // Filter by status = closed (should not show new lead)
     await page.locator("#filter-status").selectOption("closed");
@@ -286,9 +285,11 @@ test.describe("Admin portal", () => {
     await page.goto("/admin/report");
     await expect(page.locator("h1:has-text('Monthly report')")).toBeVisible();
 
-    const phoneLabel = page.locator("text=Phone clicks").first();
-    const estimateLabel = page.locator("text=Estimate requests").first();
-    const bookingLabel = page.locator("text=Confirmed bookings").first();
+    const phoneLabel = page.getByText("Phone button clicks (approximate; unauthenticated beacon)", {
+      exact: true,
+    });
+    const estimateLabel = page.getByText("Estimate requests", { exact: true });
+    const bookingLabel = page.getByText("Confirmed bookings", { exact: true });
 
     await expect(phoneLabel).toBeVisible();
     await expect(estimateLabel).toBeVisible();
@@ -310,7 +311,9 @@ test.describe("Admin portal", () => {
     await expect(page).toHaveURL(/\/admin\/login/);
 
     // API calls return 401
-    const exportRes = await page.request.get("/api/admin/leads/export?month=2026-10");
+    const exportRes = await page.request.get(
+      `/api/admin/leads/export?month=${new Date().toISOString().slice(0, 7)}`,
+    );
     expect(exportRes.status()).toBe(401);
   });
 

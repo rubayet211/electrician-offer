@@ -222,6 +222,11 @@ const demo = {
       "Residential electrical repairs, panel updates, and equipment installations. Straightforward estimates and direct communication.",
     tagline: "Residential Electrical Services",
     closingHeadline: "Have an electrical project in mind?",
+    nextSteps: [
+      "We review your submitted project details.",
+      "We contact you using the details you provided.",
+      "We provide a clear written estimate before any work begins.",
+    ],
   },
   practices: [
     {

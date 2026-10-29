@@ -1,3 +1,4 @@
+import { monthKey } from "@/lib/reporting/time";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/security/admin-session";
 import { monthlyReport } from "@/lib/reporting/monthly";
@@ -12,7 +13,7 @@ export default async function Report({
   searchParams: Promise<{ month?: string }>;
 }) {
   await requireAdmin();
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = monthKey();
   const month = (await searchParams).month ?? currentMonth;
 
   let report;
@@ -112,7 +113,7 @@ export default async function Report({
         {/* Metric 1: Phone Clicks */}
         <Card padding="md" tone="paper" cornerTicks>
           <dt className="font-mono text-xs uppercase tracking-wider text-steel-600 font-semibold">
-            Phone clicks
+            Phone button clicks (approximate; unauthenticated beacon)
           </dt>
           <dd className="mt-2 font-display text-3xl font-bold tracking-tight text-ink">
             {report.phoneClicks}
@@ -152,7 +153,7 @@ export default async function Report({
         {/* Secondary: Estimate Clicks */}
         <Card padding="md" tone="subtle">
           <dt className="font-mono text-xs uppercase tracking-wider text-steel-600 font-semibold">
-            Estimate CTA clicks
+            Estimate button clicks (approximate; unauthenticated beacon)
           </dt>
           <dd className="mt-2 font-display text-2xl font-bold tracking-tight text-ink">
             {report.estimateClicks}

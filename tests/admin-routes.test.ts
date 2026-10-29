@@ -15,19 +15,20 @@ it("issues a session for the correct password and limits login attempts", async 
     `scrypt$16384$8$1$${salt.toString("base64")}$${hash.toString("base64")}`,
   );
   vi.stubEnv("ADMIN_SESSION_SECRET", "secret");
-  const request = () =>
+  const request = (password = "password") =>
     new Request("http://localhost:3000/api/admin/login", {
       method: "POST",
       headers: {
         origin: "http://localhost:3000",
         "content-type": "application/x-www-form-urlencoded",
       },
-      body: "password=password",
+      body: `password=${password}`,
     });
   const first = await POST(request());
   expect(first.status).toBe(303);
   expect(first.headers.get("set-cookie")).toContain("admin_session=");
-  for (let i = 0; i < 4; i++) await POST(request());
+  for (let i = 0; i < 6; i++) expect((await POST(request())).status).toBe(303);
+  for (let i = 0; i < 5; i++) expect((await POST(request("wrong"))).status).toBe(401);
   expect((await POST(request())).status).toBe(429);
 });
 it("rejects missing and forged cookies", async () => {

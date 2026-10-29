@@ -26,6 +26,7 @@ const raw = {
   details: { formType: "general" },
 };
 it("retains a lead after email failure without claiming delivery", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SITE_ENV", "production");
   vi.stubEnv("RESEND_API_KEY", "test");
   vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("error", { status: 500 }));
   const store = new MemoryStore();
@@ -39,6 +40,7 @@ it("retains a lead after email failure without claiming delivery", async () => {
   });
 });
 it("escapes user content in HTML and sends an idempotency key", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SITE_ENV", "production");
   vi.stubEnv("RESEND_API_KEY", "test");
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
@@ -55,6 +57,7 @@ it("escapes user content in HTML and sends an idempotency key", async () => {
 });
 
 it("retries eligible failures and stops after five attempts", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SITE_ENV", "production");
   vi.stubEnv("RESEND_API_KEY", "test");
   const fetchSpy = vi
     .spyOn(globalThis, "fetch")
@@ -120,7 +123,10 @@ it("marks existing exhausted failures as final", async () => {
   await submitInquiry(raw, { ipHash: "hash", source: "contact_form", store });
   const lead = (await store.leads.findByIdempotencyKey(raw.idempotencyKey))!;
   const target = new MemoryStore();
-  await target.leads.create({ ...lead, notificationStatus: "failed", notificationAttempts: 5 }, []);
+  await target.leads.create(
+    { ...lead, isTest: false, notificationStatus: "failed", notificationAttempts: 5 },
+    [],
+  );
   await retryPendingNotifications(15, target);
   expect((await target.leads.get(lead.id))?.notificationStatus).toBe("failed_final");
 });

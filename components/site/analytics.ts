@@ -1,3 +1,5 @@
+import { parsedClientConfig } from "@/config/client.config";
+
 export type AnalyticsEventType = "phone_click" | "estimate_cta_click" | "form_start" | "ai_open";
 
 export interface AnalyticsEventPayload {
@@ -7,7 +9,7 @@ export interface AnalyticsEventPayload {
 }
 
 export function trackEvent(type: AnalyticsEventType, page?: string, serviceSlug?: string): void {
-  if (typeof window === "undefined") return;
+  if (!parsedClientConfig.analytics.enabled || typeof window === "undefined") return;
 
   const currentPath = page || window.location.pathname || "/";
   // Strip any query strings or trailing hashes from page path

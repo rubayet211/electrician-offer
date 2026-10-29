@@ -1,14 +1,18 @@
 import { mkdir, writeFile } from "node:fs/promises";
-const month = process.argv[2] ?? new Date().toISOString().slice(0, 7);
-if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Expected YYYY-MM");
+const requestedMonth = process.argv[2];
+if (requestedMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth))
+  throw new Error("Expected YYYY-MM");
 const base = process.env.REPORT_API_URL;
 const secret = process.env.REPORT_API_SECRET;
 if (!base || !secret) throw new Error("REPORT_API_URL and REPORT_API_SECRET are required");
 const url = new URL("/api/reports/monthly", base);
-url.searchParams.set("month", month);
+if (requestedMonth) url.searchParams.set("month", requestedMonth);
 const response = await fetch(url, { headers: { Authorization: `Bearer ${secret}` } });
 if (!response.ok) throw new Error(`Report request failed: ${response.status}`);
 const report = await response.json();
+const month = report.month;
+if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+  throw new Error("Invalid report month");
 await mkdir(".reports", { recursive: true });
 await writeFile(`.reports/${month}.json`, JSON.stringify(report, null, 2) + "\n");
 await writeFile(

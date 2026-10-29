@@ -1,6 +1,7 @@
 import { assertAdminApi } from "@/lib/security/admin-session";
 import { getStore } from "@/lib/store";
 import { allLeads, monthBounds } from "@/lib/reporting/monthly";
+import { parsedClientConfig } from "@/config/client.config";
 import { csvCell } from "@/lib/reporting/csv";
 export async function GET(req: Request) {
   const failure = assertAdminApi(req);
@@ -14,7 +15,9 @@ export async function GET(req: Request) {
       (l) =>
         +new Date(l.createdAt) >= +start &&
         +new Date(l.createdAt) < +end &&
-        (!service || l.serviceSlug === service),
+        (!service || l.serviceSlug === service) &&
+        !l.isTest &&
+        (parsedClientConfig.mode !== "production" || !l.isDemo),
     );
     const columns = [
       "reference",

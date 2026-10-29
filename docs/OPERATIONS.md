@@ -28,7 +28,7 @@ view.
 3. Create the Vercel project (Pro team) and a Postgres DB (Neon or similar), and set the env vars.
 4. `DATABASE_URL=… pnpm db:migrate`. It is idempotent and safe to rerun.
 5. Staging: deploy with `NEXT_PUBLIC_SITE_ENV=staging` (noindex). Run two revision rounds with the client.
-6. `pnpm prelaunch --url https://<staging-url>` must pass. Then switch to production env + domain and run
+6. `pnpm prelaunch --url https://<staging-url> --expect-noindex` must pass. Then switch to production env + domain and run
    `pnpm prelaunch --url https://<domain>`.
 7. Submit one test inquiry and confirm it reaches the client's inbox. Mark it Closed in admin.
 
@@ -55,13 +55,13 @@ so email problems never lose a lead.
 
 ## Incidents
 
-| Symptom                        | Check                                                | Action                                                                                                                                                                                                             |
-| ------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Client says "no emails"        | Admin → lead `notification_status`                   | `failed`/`failed_final`: check `RESEND_API_KEY`, domain verification, recipients. Use Retry in lead detail. `sent`: tell the client to check spam. Resend accepting the message doesn't mean it reached the inbox. |
-| Form returns 503               | Vercel logs (`inquiry_error`, PII-free)              | DB reachability, migration state, env                                                                                                                                                                              |
-| Assistant shows "unavailable"  | `GET /api/ai-chat` → reason. Admin report → AI usage | Quota (100/mo) or cost cap reached: expected, resets monthly. Missing key or provider routing error: fix env. Forms and call CTA keep working.                                                                     |
-| Spam burst                     | Rate-limit rows, lead list                           | Limits are store-backed (5 inquiries / 10 min / IP). Spam has honeypot + timer. Consider Turnstile only if this persists.                                                                                          |
-| Need to delete a person's data | Admin lead → reference                               | Delete the lead row (attachments cascade). AI transcripts are not stored.                                                                                                                                          |
+| Symptom                        | Check                                                | Action                                                                                                                                                                                                                                                                                |
+| ------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Client says "no emails"        | Admin → lead `notification_status`                   | `failed`/`failed_final`: check `RESEND_API_KEY`, domain verification, recipients. Use Retry in lead detail to reset attempts and send immediately; check the displayed result. `sent`: tell the client to check spam. Resend accepting the message doesn't mean it reached the inbox. |
+| Form returns 503               | Vercel logs (`inquiry_error`, PII-free)              | DB reachability, migration state, env                                                                                                                                                                                                                                                 |
+| Assistant shows "unavailable"  | `GET /api/ai-chat` → reason. Admin report → AI usage | Quota (100/mo) or cost cap reached: expected, resets monthly. Missing key or provider routing error: fix env. Forms and call CTA keep working.                                                                                                                                        |
+| Spam burst                     | Rate-limit rows, lead list                           | Limits are store-backed (5 inquiries / 10 min / IP). Spam has honeypot + timer. Consider Turnstile only if this persists.                                                                                                                                                             |
+| Need to delete a person's data | Admin lead → reference                               | Delete the lead row (attachments cascade). AI transcripts are not stored.                                                                                                                                                                                                             |
 
 ## Monthly care (≤ 60 min content + report)
 
@@ -78,3 +78,9 @@ so email problems never lose a lead.
 - Analytics events carry type + page + service slug. No PII.
 - AI: requests go to OpenRouter with ZDR + `data_collection: "deny"`. Transcripts are not stored. Only counts,
   tokens and cost are kept.
+
+Production IP rate limiting assumes Vercel overwrites x-vercel-forwarded-for. Without that header, requests share the unknown bucket; do not deploy behind a proxy that lets clients supply it.
+
+Next.js expands `$` in `.env` files, including quoted values. Set `ADMIN_PASSWORD_HASH_B64` to the base64 encoding of the entire scrypt hash string (for example, `node -e "console.log(Buffer.from(process.argv[1]).toString('base64'))" '<hash>'`). It takes precedence over `ADMIN_PASSWORD_HASH`. Changing either active hash invalidates existing sessions.
+
+Staging inquiries are marked as test leads whenever `NEXT_PUBLIC_SITE_ENV` is not `production`. They are excluded from reports and exports. Set `notifications.stagingRecipients` to route test notifications to a separate inbox; otherwise they are marked `skipped_test` and no email is sent. Demo leads remain `skipped_demo`.

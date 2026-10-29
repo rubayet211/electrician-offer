@@ -233,3 +233,5 @@ A production-hosted `mode: "demo"` site may omit `DATABASE_URL` only when `DEMO_
 non-demo production deployment requires PostgreSQL.
 
 Vercel Hobby deployments cannot schedule a cron more than once per day; the 15-minute notification retry requires an eligible Vercel plan or an external scheduler.
+
+Production IP rate limiting trusts only Vercel's x-vercel-forwarded-for header. Deployments must ensure Vercel overwrites this header; without it requests share the unknown bucket.

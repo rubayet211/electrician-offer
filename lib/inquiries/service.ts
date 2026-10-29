@@ -99,6 +99,7 @@ export async function submitInquiry(
       source: ctx.source,
       ipHash: ctx.ipHash,
       isDemo: config.mode === "demo",
+      isTest: config.mode === "production" && process.env.NEXT_PUBLIC_SITE_ENV !== "production",
       status: "new",
       notificationStatus: "pending",
       notificationAttempts: 0,
@@ -132,6 +133,8 @@ export async function submitInquiry(
       };
     try {
       if (lead.isDemo) await store.leads.setNotification(id, "skipped_demo");
+      else if (lead.isTest && !config.notifications.stagingRecipients?.length)
+        await store.leads.setNotification(id, "skipped_test");
       else if (await store.leads.claimNotification(id, new Date())) {
         const result = await sendLeadNotificationEmail(lead);
         await store.leads.finishNotification(

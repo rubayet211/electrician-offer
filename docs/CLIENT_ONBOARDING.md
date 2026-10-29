@@ -97,18 +97,19 @@ Before launching, Axinofy personnel must independently verify professional crede
 
 ## 7. Prelaunch Automated Verification
 
-Switch the configuration to production (`mode: "production"`, `NEXT_PUBLIC_SITE_ENV="production"`).
-Run the prelaunch verification script:
+For staging, set `NEXT_PUBLIC_SITE_ENV=staging` and run:
 
 ```bash
-pnpm prelaunch --url https://staging.example.com --env-file clients/<slug>/.env
+pnpm prelaunch --url https://staging.example.com --expect-noindex --env-file clients/<slug>/.env
 ```
+
+For production, set `mode: "production"` and `NEXT_PUBLIC_SITE_ENV=production`, then run `pnpm prelaunch --url https://<domain>` without the flag.
 
 The script validates:
 
 - Static config checks: No `__REQUIRED__` placeholders, bare domain, phone E.164, valid recipient emails, verified licenses, <= 8 pages.
 - Environment completeness: Database connection, Resend API key, admin secrets, AI keys (if enabled).
-- Live URL crawl: 200 HTTP status, HTTPS, single `<h1>`, canonical links, meta descriptions, unique `<title>` tags, clickable `tel:` links, valid JSON-LD parsing, `robots.txt` permissions, and absence of `noindex`.
+- Live URL crawl: 200 HTTP status, HTTPS, single `<h1>`, canonical links, meta descriptions, unique `<title>` tags, clickable `tel:` links, valid JSON-LD parsing, `robots.txt` permissions, and the expected indexing policy (`noindex` in staging, absent in production).
   All checks must pass with exit code `0` before pointing DNS.
 
 ---

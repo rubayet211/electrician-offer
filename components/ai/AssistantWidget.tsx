@@ -7,6 +7,7 @@ import { MessageSquare } from "lucide-react";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { InvalidFields } from "./InvalidFields";
 import { assistantErrorMessage } from "./error-message";
+import { takePendingAssistantOpen } from "./open-assistant";
 
 type Props = { phone: string; phoneDisplay?: string };
 type Status = {
@@ -75,8 +76,16 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
     }).catch(() => {});
   }, []);
   useEffect(() => {
-    window.addEventListener("assistant:open", launch);
-    return () => window.removeEventListener("assistant:open", launch);
+    const onOpen = () => {
+      takePendingAssistantOpen();
+      launch();
+    };
+    window.addEventListener("assistant:open", onOpen);
+    const pending = takePendingAssistantOpen() ? window.setTimeout(launch, 0) : undefined;
+    return () => {
+      window.removeEventListener("assistant:open", onOpen);
+      window.clearTimeout(pending);
+    };
   }, [launch]);
   useEffect(() => {
     if (open && availability?.available) inputRef.current?.focus();

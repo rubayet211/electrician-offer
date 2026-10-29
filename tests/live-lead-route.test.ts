@@ -40,6 +40,7 @@ function form(key: string) {
   return data;
 }
 it("saves multipart photos and sends a live notification through the route", async () => {
+  vi.stubEnv("NEXT_PUBLIC_SITE_ENV", "production");
   vi.stubEnv("RESEND_API_KEY", "key");
   const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ id: "provider" }));
   const key = "2fe705c5-8cf6-4f08-8e0b-71ad73c166de";

@@ -1,13 +1,8 @@
 import { parsedClientConfig } from "@/config/client.config";
 import { getStore } from "@/lib/store";
 import type { Lead, Store } from "@/lib/store/types";
-export function monthBounds(month: string): [Date, Date] {
-  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error("Invalid month");
-  const start = new Date(`${month}-01T00:00:00.000Z`);
-  const end = new Date(start);
-  end.setUTCMonth(end.getUTCMonth() + 1);
-  return [start, end];
-}
+import { monthBounds } from "@/lib/reporting/time";
+export { monthBounds } from "@/lib/reporting/time";
 export async function allLeads(store: Store): Promise<Lead[]> {
   const result: Lead[] = [];
   for (let offset = 0; ; offset += 500) {
@@ -33,7 +28,8 @@ export async function monthlyReport(
     (l) =>
       +new Date(l.createdAt) >= +start &&
       +new Date(l.createdAt) < +end &&
-      (!excludeDemo || !l.isDemo),
+      (!excludeDemo || !l.isDemo) &&
+      !l.isTest,
   );
   const byService: Record<string, number> = {};
   const byStatus: Record<string, number> = {};

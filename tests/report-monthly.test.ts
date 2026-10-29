@@ -7,10 +7,10 @@ it("separates clicks, requests and bookings and excludes demo leads", async () =
     id: "a",
     type: "phone_click",
     page: "/",
-    createdAt: "2026-10-01T00:00:00Z",
+    createdAt: "2026-10-02T00:00:00Z",
   });
   const base = {
-    createdAt: "2026-10-01T00:00:00Z",
+    createdAt: "2026-10-02T00:00:00Z",
     name: "A",
     phone: "1234567890",
     serviceSlug: "general",

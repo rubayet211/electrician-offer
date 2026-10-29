@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { isDeepStrictEqual } from "node:util";
 
 export function parseEnvFile(filePath) {
   if (!fs.existsSync(filePath)) {
@@ -52,9 +53,18 @@ export function validateStaticConfig(config, env = process.env, options = {}) {
     problems.push("Active config contains __REQUIRED__ placeholders");
   }
 
+  for (const field of ["hours", "branding", "positioning"]) {
+    if (options.demoConfig && isDeepStrictEqual(config[field], options.demoConfig[field]))
+      problems.push(`${field} must not match the demo config`);
+  }
+
   // 2. Mode must be production
-  if (config.mode !== "production") {
+  if (config.mode !== "production" && !(options.expectNoindex && config.mode === "staging")) {
     problems.push(`Mode must be production, found "${config.mode}"`);
+  }
+
+  if (env.NEXT_PUBLIC_SITE_ENV !== "production" && !options.expectNoindex) {
+    problems.push("NEXT_PUBLIC_SITE_ENV must be production");
   }
 
   // 3. Phone must be E.164
@@ -135,7 +145,7 @@ export function validateStaticConfig(config, env = process.env, options = {}) {
   };
 }
 
-export async function crawlAndValidateUrl(baseUrl) {
+export async function crawlAndValidateUrl(baseUrl, options = {}) {
   const problems = [];
   const results = [];
 
@@ -152,8 +162,17 @@ export async function crawlAndValidateUrl(baseUrl) {
       problems.push(`robots.txt returned HTTP ${res.status}`);
     } else {
       const robotsText = await res.text();
-      // Verify robots allows root and disallows /admin /api
-      if (/Disallow:\s*\/\s*$/m.test(robotsText) && !/Allow:\s*\/\s*$/m.test(robotsText)) {
+      if (
+        options.expectNoindex &&
+        (!/Disallow:\s*\/\s*$/m.test(robotsText) || /Allow:\s*\/\s*$/m.test(robotsText))
+      ) {
+        problems.push("robots.txt must disallow root in staging");
+      }
+      if (
+        !options.expectNoindex &&
+        /Disallow:\s*\/\s*$/m.test(robotsText) &&
+        !/Allow:\s*\/\s*$/m.test(robotsText)
+      ) {
         problems.push(`robots.txt disallows root in production: \n${robotsText}`);
       }
     }
@@ -165,23 +184,38 @@ export async function crawlAndValidateUrl(baseUrl) {
   const sitemapUrl = new URL("/sitemap.xml", baseUrl).toString();
   const urlsToCrawl = new Set([new URL("/", baseUrl).toString()]);
 
-  try {
-    const res = await fetch(sitemapUrl);
-    if (res.status !== 200) {
-      problems.push(`sitemap.xml returned HTTP ${res.status}`);
-    } else {
-      const sitemapXml = await res.text();
-      const locMatches = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)];
-      if (locMatches.length === 0) {
-        problems.push("sitemap.xml contains no <loc> entries");
-      }
-      for (const m of locMatches) {
-        urlsToCrawl.add(m[1].trim());
-      }
+  if (options.expectNoindex) {
+    for (const page of options.config?.pages ?? []) {
+      if (page.enabled)
+        urlsToCrawl.add(new URL(page.slug === "home" ? "/" : `/${page.slug}`, baseUrl).toString());
     }
-  } catch (err) {
-    problems.push(`Failed to fetch sitemap.xml: ${err.message}`);
-  }
+    for (const service of options.config?.services ?? []) {
+      if (service.offered)
+        urlsToCrawl.add(new URL(`/services/${service.slug}`, baseUrl).toString());
+    }
+  } else
+    try {
+      const res = await fetch(sitemapUrl);
+      if (res.status !== 200) {
+        problems.push(`sitemap.xml returned HTTP ${res.status}`);
+      } else {
+        const sitemapXml = await res.text();
+        const locMatches = [...sitemapXml.matchAll(/<loc>([^<]+)<\/loc>/g)];
+        if (locMatches.length === 0) {
+          problems.push("sitemap.xml contains no <loc> entries");
+        }
+        for (const m of locMatches) {
+          const loc = new URL(m[1].trim());
+          const target = new URL(baseUrl);
+          target.pathname = loc.pathname;
+          target.search = loc.search;
+          target.hash = "";
+          urlsToCrawl.add(target.toString());
+        }
+      }
+    } catch (err) {
+      problems.push(`Failed to fetch sitemap.xml: ${err.message}`);
+    }
 
   // 3. Crawl each page
   const seenTitles = new Map();
@@ -291,8 +325,11 @@ export async function crawlAndValidateUrl(baseUrl) {
       const robotsMeta = html.match(/<meta[^>]+name=["']robots["'][^>]+content=["']([^"']*)["']/i);
       if (robotsMeta && /noindex/i.test(robotsMeta[1])) {
         pageResult.hasNoindex = true;
-        pageResult.errors.push(`Page has noindex meta tag: "${robotsMeta[1]}"`);
+        if (!options.expectNoindex)
+          pageResult.errors.push(`Page has noindex meta tag: "${robotsMeta[1]}"`);
       }
+      if (options.expectNoindex && !pageResult.hasNoindex)
+        pageResult.errors.push("Page lacks noindex meta tag");
     } catch (err) {
       pageResult.errors.push(`Fetch failed: ${err.message}`);
     }

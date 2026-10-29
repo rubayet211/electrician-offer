@@ -5,7 +5,8 @@ import { MemoryStore } from "./memory-store";
 import { PgStore, type Db, type DbQuery } from "./pg-store";
 import type { Store } from "./types";
 import type { PoolClient, Pool } from "pg";
-let store: Store | undefined;
+// globalThis: Next bundles route handlers and pages separately; one store per process, not per bundle.
+const shared = globalThis as typeof globalThis & { __electricianStore?: Store };
 function queryAdapter(client: Pool | PoolClient): DbQuery {
   return {
     query: async <T>(sql: string, params?: unknown[]) => ({
@@ -15,6 +16,7 @@ function queryAdapter(client: Pool | PoolClient): DbQuery {
 }
 export function getStore(): Store {
   if (process.env.NODE_ENV === "production") getServerEnv();
+  let store = shared.__electricianStore;
   if (!store) {
     if (process.env.DATABASE_URL) {
       const pool = getPool();
@@ -42,6 +44,7 @@ export function getStore(): Store {
       };
       store = new PgStore(db);
     } else store = new MemoryStore(true);
+    shared.__electricianStore = store;
   }
   if (
     process.env.NODE_ENV === "production" &&

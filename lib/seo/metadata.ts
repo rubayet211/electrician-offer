@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { parsedClientConfig } from "@/config/client.config";
 import type { ClientConfig } from "@/types/client-config";
+import { isIndexable } from "@/lib/seo/indexable";
 
 export interface BuildMetadataOptions {
   title: string;
@@ -29,10 +30,9 @@ export function buildMetadata(
   const ogImage =
     image || config.seo.ogImage || (config.mode === "demo" ? "/images/demo/hero.jpg" : undefined);
 
-  const isProduction =
-    config.mode === "production" && process.env.NEXT_PUBLIC_SITE_ENV === "production";
-
-  const robots = isProduction ? { index: true, follow: true } : { index: false, follow: false };
+  const robots = isIndexable(config)
+    ? { index: true, follow: true }
+    : { index: false, follow: false };
 
   const verification: Metadata["verification"] = config.seo.gscVerification
     ? { google: config.seo.gscVerification }

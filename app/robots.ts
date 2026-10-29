@@ -1,14 +1,10 @@
 import type { MetadataRoute } from "next";
 import { parsedClientConfig } from "@/config/client.config";
 import type { ClientConfig } from "@/types/client-config";
+import { isIndexable } from "@/lib/seo/indexable";
 
 export function buildRobots(config: ClientConfig = parsedClientConfig): MetadataRoute.Robots {
-  const isProduction =
-    config.mode === "production" &&
-    (process.env.NEXT_PUBLIC_SITE_ENV === undefined ||
-      process.env.NEXT_PUBLIC_SITE_ENV === "production");
-
-  if (!isProduction) {
+  if (!isIndexable(config)) {
     return {
       rules: {
         userAgent: "*",

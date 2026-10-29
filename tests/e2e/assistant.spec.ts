@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("AI Assistant", () => {
   test("GET /api/ai-chat returns available or a documented reason in demo mode", async ({
@@ -20,9 +20,7 @@ test.describe("AI Assistant", () => {
     expect(data.displayName).toBe("Demo assistant");
   });
 
-  test("clicking 'Ask' in the sticky bar opens the assistant dialog if widget listens for assistant:open", async ({
-    page,
-  }) => {
+  test("clicking Ask in the sticky bar opens the assistant dialog", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
 
@@ -36,16 +34,6 @@ test.describe("AI Assistant", () => {
 
     // Check if dialog opened
     const dialog = page.locator("[role='dialog'][aria-modal='true']");
-    const isDialogOpened = await dialog.isVisible({ timeout: 1500 }).catch(() => false);
-
-    if (!isDialogOpened) {
-      test.fixme(
-        true,
-        "AssistantWidget does not yet attach an 'assistant:open' window event listener; widget is maintained by concurrent agent",
-      );
-      return;
-    }
-
     await expect(dialog).toBeVisible();
     await expect(page.locator("#assistant-title")).toBeVisible();
   });

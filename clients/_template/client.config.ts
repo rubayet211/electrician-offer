@@ -1,32 +1,44 @@
-import demo from "@/clients/demo/client.config";
 const required = "__REQUIRED__";
 const template = {
-  ...demo,
   mode: "production" as const,
   business: {
-    ...demo.business,
     name: required,
     domain: required,
     phone: required,
     phoneDisplay: required,
     email: required,
-    timezone: required,
+    timezone: "UTC",
     address: { city: required, state: required, zip: required, showPublicly: false },
   },
-  positioning: {
-    heroHeadline: "Electrical Work Done Right. A Clear Way to Get Started.",
-    heroSubhead: required,
-    tagline: undefined,
-    closingHeadline: "Have an electrical project in mind?",
-  },
-  practices: [],
+  positioning: { heroHeadline: required, heroSubhead: required, closingHeadline: required },
+  practices: [{ title: required, description: required }],
+  hours: [{ days: required, open: required, close: required }],
+  emergency: { offered: false, verified: false },
   serviceAreas: [],
   services: [],
+  pages: ["home", "services", "service-areas", "about", "contact", "privacy", "terms"].map(
+    (slug) => ({ slug, enabled: true }),
+  ),
   credentials: { licenses: [], insurance: { status: "unverified" as const }, certifications: [] },
+  reviews: [],
   projects: [],
+  faqs: [],
+  branding: { primary: required, accent: required },
   notifications: { recipients: [required], fromAddress: required },
   seo: { titleTemplate: required, defaultDescription: required },
-  ai: { ...demo.ai, enabled: false, approvedKnowledge: [] },
+  analytics: { enabled: true },
+  uploads: { enabled: true, maxFiles: 3, maxBytesPerFile: 4 * 1024 * 1024, retentionDays: 180 },
+  ai: {
+    enabled: false,
+    model: "deepseek/deepseek-v4.1-flash",
+    monthlyConversationAllowance: 100,
+    monthlyCostCapUsd: 5,
+    maxVisitorMessagesPerConversation: 15,
+    sessionInactivityMinutes: 30,
+    maxOutputTokens: 500,
+    newConversationsPerVisitorPerDay: 4,
+    displayName: required,
+    approvedKnowledge: [],
+  },
 };
-
 export default template;

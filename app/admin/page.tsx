@@ -1,3 +1,4 @@
+import { monthKey } from "@/lib/reporting/time";
 import Link from "next/link";
 import { requireAdmin } from "@/lib/security/admin-session";
 import { getStore } from "@/lib/store";
@@ -64,7 +65,7 @@ export default async function Admin({
   const totalPages = Math.ceil(leads.length / pageSize) || 1;
   const pagedLeads = leads.slice((page - 1) * pageSize, page * pageSize);
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonth = monthKey();
 
   const url = (p: number) =>
     `/admin?${new URLSearchParams({

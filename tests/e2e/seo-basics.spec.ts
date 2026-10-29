@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("SEO basics in demo mode", () => {
   test("robots.txt in demo mode disallows all", async ({ page }) => {

@@ -5,6 +5,7 @@ import { Phone, ArrowRight, MessageSquare } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
 import { CallLink } from "./CallLink";
 import { EstimateCtaLink } from "./EstimateCtaLink";
+import { openAssistant } from "@/components/ai/open-assistant";
 
 export function StickyMobileCallBar() {
   const { phone, phoneDisplay } = parsedClientConfig.business;
@@ -40,11 +41,7 @@ export function StickyMobileCallBar() {
         {isAiEnabled && (
           <button
             type="button"
-            onClick={() => {
-              if (typeof window !== "undefined") {
-                window.dispatchEvent(new Event("assistant:open"));
-              }
-            }}
+            onClick={openAssistant}
             aria-label="Ask a question with the AI assistant"
             className="h-[52px] min-h-[48px] inline-flex items-center justify-center gap-1.5 px-2.5 min-[360px]:px-3 rounded-sm border border-steel-700 bg-charcoal text-paper font-sans font-semibold text-xs min-[360px]:text-sm hover:bg-steel-800 active:bg-steel-800 transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-signal-blue shrink-0"
           >

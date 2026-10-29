@@ -103,8 +103,16 @@ export class MemoryStore implements Store {
       if (!this.leadMap.has(leadId)) throw new Error("Lead not found");
       this.leadEvents.push({ id: randomUUID(), leadId, type, value });
     },
-    claimNotification: async (id: string, now: Date) => {
+    claimNotification: async (id: string, now: Date, manual = false) => {
       const l = this.leadMap.get(id);
+      if (manual) {
+        if (!l || l.isDemo || !["pending", "failed", "failed_final"].includes(l.notificationStatus))
+          return false;
+        l.notificationAttempts = 1;
+        l.notificationStatus = "sending";
+        l.notificationLastAttemptAt = now.toISOString();
+        return true;
+      }
       if (
         !l ||
         !["pending", "failed", "sending"].includes(l.notificationStatus) ||
@@ -446,7 +454,8 @@ export class MemoryStore implements Store {
           e.value === "true" &&
           +new Date(e.createdAt) >= +start &&
           +new Date(e.createdAt) < +end &&
-          (!excludeDemo || !this.leadMap.get(e.leadId)?.isDemo),
+          (!excludeDemo || !this.leadMap.get(e.leadId)?.isDemo) &&
+          !this.leadMap.get(e.leadId)?.isTest,
       ).length,
     maintenance: async (start: Date, end: Date) =>
       structuredClone(

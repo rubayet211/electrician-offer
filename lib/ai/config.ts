@@ -21,14 +21,8 @@ export function getAIConfig() {
   };
 }
 
-export function monthKey(date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: parsedClientConfig.business.timezone,
-    year: "numeric",
-    month: "2-digit",
-  }).formatToParts(date);
-  return `${parts.find((part) => part.type === "year")!.value}-${parts.find((part) => part.type === "month")!.value}`;
-}
+export { monthKey } from "@/lib/reporting/time";
+import { monthKey } from "@/lib/reporting/time";
 
 export async function getAIStatus(): Promise<{
   available: boolean;

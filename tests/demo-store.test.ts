@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { assertProductionReady } from "@/lib/config/env";
 import demo from "@/clients/demo/client.config";
 afterEach(() => {
+  delete (globalThis as { __electricianStore?: unknown }).__electricianStore;
   vi.unstubAllEnvs();
   vi.resetModules();
   vi.doUnmock("@/config/client.config");

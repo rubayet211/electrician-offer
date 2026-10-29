@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("Contact & Estimate Form", () => {
   test("/contact?service=panel-upgrades preselects Panel upgrades, shows panel fields, switches to EV charger, and shows troubleshooting safety notice", async ({

@@ -16,7 +16,7 @@ export interface DbQuery {
 export interface Db extends DbQuery {
   transaction<T>(fn: (db: DbQuery) => Promise<T>): Promise<T>;
 }
-const leadColumns = `id, reference, created_at AS "createdAt", name, phone, email, zip, location, service_slug AS "serviceSlug", description, urgency, details, consent, source, source_page AS "sourcePage", utm, ip_hash AS "ipHash", is_demo AS "isDemo", status, notification_status AS "notificationStatus", notification_attempts AS "notificationAttempts", notification_last_error AS "notificationLastError", notification_provider_id AS "notificationProviderId", notification_last_attempt_at AS "notificationLastAttemptAt", idempotency_key AS "idempotencyKey", dedupe_hash AS "dedupeHash", (SELECT count(*)::int FROM lead_attachments WHERE lead_id=leads.id) AS "photoCount"`;
+const leadColumns = `id, reference, created_at AS "createdAt", name, phone, email, zip, location, service_slug AS "serviceSlug", description, urgency, details, consent, source, source_page AS "sourcePage", utm, ip_hash AS "ipHash", is_demo AS "isDemo", is_test AS "isTest", status, notification_status AS "notificationStatus", notification_attempts AS "notificationAttempts", notification_last_error AS "notificationLastError", notification_provider_id AS "notificationProviderId", notification_last_attempt_at AS "notificationLastAttemptAt", idempotency_key AS "idempotencyKey", dedupe_hash AS "dedupeHash", (SELECT count(*)::int FROM lead_attachments WHERE lead_id=leads.id) AS "photoCount"`;
 const sessionColumns = `id, visitor_hash AS "visitorHash", month, started_at AS "startedAt", last_activity_at AS "lastActivityAt", visitor_messages AS "visitorMessages", counted, reservation_state AS "reservationState"`;
 const usageColumns = `month, reserved, used, input_tokens::float8 AS "inputTokens", output_tokens::float8 AS "outputTokens", cost_usd::float8 AS "costUsd", model_errors AS "modelErrors"`;
 export class PgStore implements Store {
@@ -53,7 +53,7 @@ export class PgStore implements Store {
         ).rows[0];
         if (existing) return this.normalize(existing);
         await tx.query(
-          `INSERT INTO leads(id,reference,created_at,name,phone,email,zip,location,service_slug,description,urgency,details,consent,source,source_page,utm,ip_hash,is_demo,status,notification_status,notification_attempts,idempotency_key,dedupe_hash) VALUES (${Array.from({ length: 23 }, (_, i) => `$${i + 1}`).join(",")})`,
+          `INSERT INTO leads(id,reference,created_at,name,phone,email,zip,location,service_slug,description,urgency,details,consent,source,source_page,utm,ip_hash,is_demo,is_test,status,notification_status,notification_attempts,idempotency_key,dedupe_hash) VALUES (${Array.from({ length: 24 }, (_, i) => `$${i + 1}`).join(",")})`,
           [
             l.id,
             l.reference,
@@ -73,6 +73,7 @@ export class PgStore implements Store {
             l.utm ? JSON.stringify(l.utm) : null,
             l.ipHash,
             l.isDemo,
+            l.isTest ?? false,
             l.status,
             l.notificationStatus,
             l.notificationAttempts,
@@ -121,11 +122,16 @@ export class PgStore implements Store {
         value ?? null,
       ]);
     },
-    claimNotification: async (id: string, now: Date) =>
-      !!(await this.one(
-        "UPDATE leads SET notification_status='sending',notification_attempts=notification_attempts+1,notification_last_attempt_at=$2 WHERE id=$1 AND notification_attempts<5 AND ((notification_status='sending' AND notification_last_attempt_at + interval '10 minutes' <= $2) OR (notification_status IN ('pending','failed') AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60,power(2,notification_attempts)) <= $2))) RETURNING id",
-        [id, now.toISOString()],
-      )),
+    claimNotification: async (id: string, now: Date, manual = false) =>
+      manual
+        ? !!(await this.one(
+            "UPDATE leads SET notification_status='sending', notification_attempts=1, notification_last_attempt_at=$2 WHERE id=$1 AND NOT is_demo AND notification_status IN ('pending','failed','failed_final') RETURNING id",
+            [id, now.toISOString()],
+          ))
+        : !!(await this.one(
+            "UPDATE leads SET notification_status='sending',notification_attempts=notification_attempts+1,notification_last_attempt_at=$2 WHERE id=$1 AND notification_attempts<5 AND ((notification_status='sending' AND notification_last_attempt_at + interval '10 minutes' <= $2) OR (notification_status IN ('pending','failed') AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60,power(2,notification_attempts)) <= $2))) RETURNING id",
+            [id, now.toISOString()],
+          )),
     finishNotification: async (
       id: string,
       status: "sent" | "failed",
@@ -493,7 +499,7 @@ export class PgStore implements Store {
       }),
     bookingCount: async (start: Date, end: Date, excludeDemo: boolean) =>
       (await this.one<{ count: number }>(
-        "SELECT count(*)::int AS count FROM lead_events e JOIN leads l ON l.id=e.lead_id WHERE e.type='booking' AND e.value='true' AND e.created_at >= $1 AND e.created_at < $2 AND (NOT $3 OR NOT l.is_demo)",
+        "SELECT count(*)::int AS count FROM lead_events e JOIN leads l ON l.id=e.lead_id WHERE e.type='booking' AND e.value='true' AND e.created_at >= $1 AND e.created_at < $2 AND (NOT $3 OR NOT l.is_demo) AND NOT l.is_test",
         [start.toISOString(), end.toISOString(), excludeDemo],
       ))!.count,
     maintenance: async (start: Date, end: Date) =>

@@ -1,6 +1,6 @@
 import type { Inquiry } from "@/lib/inquiries/schema";
 export type NotificationStatus =
-  "pending" | "sending" | "sent" | "failed" | "failed_final" | "skipped_demo";
+  "pending" | "sending" | "sent" | "failed" | "failed_final" | "skipped_demo" | "skipped_test";
 export type Lead = Inquiry & {
   id: string;
   reference: string;
@@ -8,6 +8,7 @@ export type Lead = Inquiry & {
   source: "contact_form" | "ai_chat";
   ipHash: string;
   isDemo: boolean;
+  isTest?: boolean;
   status: string;
   notificationStatus: NotificationStatus;
   notificationAttempts: number;
@@ -83,7 +84,7 @@ export interface Store {
       error?: string,
       providerId?: string,
     ): Promise<void>;
-    claimNotification(id: string, now: Date): Promise<boolean>;
+    claimNotification(id: string, now: Date, manual?: boolean): Promise<boolean>;
     finishNotification(
       id: string,
       status: "sent" | "failed",

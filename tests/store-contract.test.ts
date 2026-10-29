@@ -30,6 +30,39 @@ const lead: Lead = {
 };
 for (const kind of ["memory", "postgres"] as const)
   describe(`${kind} full store`, () => {
+    it("manually claims eligible notifications and resets attempts, never demo", async () => {
+      const db = kind === "postgres" ? new PGlite() : null;
+      if (db) await runMigrations((sql) => db.exec(sql));
+      const store = db ? new PgStore(db) : new MemoryStore();
+      await store.leads.create(
+        {
+          ...lead,
+          isDemo: false,
+          isTest: true,
+          notificationStatus: "failed_final",
+          notificationAttempts: 5,
+          notificationLastAttemptAt: time,
+        },
+        [],
+      );
+      expect((await store.leads.get(lead.id))?.isTest).toBe(true);
+      expect(await store.leads.claimNotification(lead.id, now)).toBe(false);
+      expect(await store.leads.claimNotification(lead.id, now, true)).toBe(true);
+      expect((await store.leads.get(lead.id))?.notificationAttempts).toBe(1);
+      expect(await store.leads.claimNotification(lead.id, now, true)).toBe(false);
+      await store.leads.create(
+        {
+          ...lead,
+          id: "demo",
+          reference: "EL-DEMO",
+          idempotencyKey: "22222222-2222-4222-8222-222222222222",
+          dedupeHash: "other",
+        },
+        [],
+      );
+      expect(await store.leads.claimNotification("demo", now, true)).toBe(false);
+      if (db) await db.close();
+    });
     it("persists leads and attachments, filters, updates, analytics and drafts", async () => {
       const db = kind === "postgres" ? new PGlite() : null;
       if (db) await runMigrations((sql) => db.exec(sql));

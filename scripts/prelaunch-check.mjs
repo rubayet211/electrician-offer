@@ -38,6 +38,7 @@ async function main() {
   // Load config & env via the registered TS loader
   const { assertProductionReady } = await import("../lib/config/env.ts");
   const { parsedClientConfig } = await import("../config/client.config.ts");
+  const { default: demoConfig } = await import("../clients/demo/client.config.ts");
 
   let env = { ...process.env };
   if (options["env-file"]) {
@@ -62,6 +63,8 @@ async function main() {
   // Static checks
   const staticResult = validateStaticConfig(parsedClientConfig, env, {
     assertProductionReady,
+    demoConfig,
+    expectNoindex: Boolean(options["expect-noindex"]),
     onWarning: (msg) => console.warn(`[WARNING] ${msg}`),
   });
 
@@ -82,7 +85,10 @@ async function main() {
     const targetUrl = String(options.url).trim();
     console.log(`\nBeginning live verification of ${targetUrl}...`);
 
-    const crawlResult = await crawlAndValidateUrl(targetUrl);
+    const crawlResult = await crawlAndValidateUrl(targetUrl, {
+      expectNoindex: Boolean(options["expect-noindex"]),
+      config: parsedClientConfig,
+    });
     printSummaryTable(crawlResult.results);
 
     if (!crawlResult.passed) {
