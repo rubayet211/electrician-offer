@@ -185,9 +185,6 @@ export default function HomePage() {
                   </div>
                   <div className="p-3 bg-charcoal text-xs font-mono text-steel-400 flex items-center justify-between border-t border-white/10 mt-2">
                     <span>{heroProject.title}</span>
-                    {heroProject.isSample && (
-                      <span className="text-steel-500">Sample hero photo</span>
-                    )}
                   </div>
                 </div>
               </div>

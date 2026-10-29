@@ -238,7 +238,9 @@ export default function AboutPage() {
             title="Licensing & Insurance Specifications"
             lede={
               hasCredentials
-                ? "Verified license and insurance information for our contracting organization."
+                ? demo
+                  ? "Sample license and insurance entries for this demo. A client site lists only credentials Axinofy has verified."
+                  : "Verified license and insurance information for this business."
                 : "Ask us for our license and insurance details."
             }
           />
