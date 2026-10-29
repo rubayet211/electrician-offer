@@ -2,19 +2,17 @@ import React, { Suspense } from "react";
 import type { Metadata } from "next";
 import { Phone, Mail, Clock, MapPin } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl } from "@/lib/config/site";
 import { Section, Container, Card, Notice } from "@/components/ui";
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateForm } from "@/components/site/estimate/EstimateForm";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `Request an Estimate & Contact | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "Request an Estimate & Contact",
     description: `Submit an online electrical service estimate request or call ${parsedClientConfig.business.name}. Written estimates and direct communication.`,
-    alternates: {
-      canonical: canonicalUrl("/contact"),
-    },
-  };
+    path: "/contact",
+  });
 }
 
 export default function ContactPage() {

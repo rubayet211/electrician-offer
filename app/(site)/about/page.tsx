@@ -2,24 +2,26 @@ import React from "react";
 import type { Metadata } from "next";
 import { ShieldCheck, ArrowRight, Phone } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl, isDemo } from "@/lib/config/site";
+import { isDemo } from "@/lib/config/site";
 import { Section, Container, SectionHeading, SpecList, Card, Badge, Notice } from "@/components/ui";
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { buildElectricianSchema } from "@/lib/seo/schema";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `About & Credentials | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "About & Credentials",
     description: `Review verified licenses, insurance, and professional electrical standards for ${parsedClientConfig.business.name}.`,
-    alternates: {
-      canonical: canonicalUrl("/about"),
-    },
-  };
+    path: "/about",
+  });
 }
 
 export default function AboutPage() {
   const { business, credentials } = parsedClientConfig;
   const demo = isDemo();
+  const electricianSchema = buildElectricianSchema();
 
   // Filter licenses to display: verified licenses, or sample licenses in demo mode
   const displayLicenses = credentials.licenses.filter(
@@ -102,6 +104,7 @@ export default function AboutPage() {
 
   return (
     <>
+      <JsonLd data={electricianSchema} />
       {/* Header Banner */}
       <Section tone="dark" blueprint={true} className="py-14 sm:py-20">
         <Container>

@@ -2,19 +2,17 @@ import React from "react";
 import type { Metadata } from "next";
 import { MapPin, Phone, ArrowRight } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl } from "@/lib/config/site";
 import { Section, Container, SectionHeading, Card } from "@/components/ui";
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `Service Areas | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "Service Areas",
     description: `Communities and neighborhoods served by ${parsedClientConfig.business.name}. Review local coverage and ZIP codes for electrical contractor services.`,
-    alternates: {
-      canonical: canonicalUrl("/service-areas"),
-    },
-  };
+    path: "/service-areas",
+  });
 }
 
 export default function ServiceAreasPage() {

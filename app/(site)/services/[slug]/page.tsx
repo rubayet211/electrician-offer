@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Phone, CheckCircle2 } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl, getService, offeredServices, isDemo } from "@/lib/config/site";
+import { getService, offeredServices, isDemo } from "@/lib/config/site";
 import {
   Section,
   Container,
@@ -19,6 +19,9 @@ import {
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
 import { ServiceIcon } from "@/components/site/icons";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { buildServiceSchema, buildBreadcrumbSchema, buildFaqSchema } from "@/lib/seo/schema";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 interface ServicePageProps {
   params: Promise<{ slug: string }>;
@@ -41,14 +44,12 @@ export async function generateMetadata({ params }: ServicePageProps): Promise<Me
     };
   }
 
-  return {
-    title: `${service.title} | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: service.title,
     description:
       service.shortDescription || service.intro || parsedClientConfig.seo.defaultDescription,
-    alternates: {
-      canonical: canonicalUrl(`/services/${slug}`),
-    },
-  };
+    path: `/services/${slug}`,
+  });
 }
 
 export default async function ServiceDetailPage({ params }: ServicePageProps) {
@@ -87,8 +88,19 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
     description: stepDesc,
   }));
 
+  const domain = business.domain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const serviceSchema = buildServiceSchema(service);
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: "Home", url: `https://${domain}/` },
+    { name: "Services", url: `https://${domain}/services` },
+    { name: service.title, url: `https://${domain}/services/${service.slug}` },
+  ]);
+  const faqSchema = service.faqs && service.faqs.length > 0 ? buildFaqSchema(service.faqs) : null;
+  const schemas = [serviceSchema, breadcrumbSchema, ...(faqSchema ? [faqSchema] : [])];
+
   return (
     <>
+      <JsonLd data={schemas} />
       {/* Prominent Safety Notice for Troubleshooting */}
       {isTroubleshooting && (
         <div className="bg-red-50 border-b border-danger/30 py-4">

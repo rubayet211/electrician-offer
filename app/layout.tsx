@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     template: parsedClientConfig.seo.titleTemplate,
     default: parsedClientConfig.business.name,
   },
-  description: parsedClientConfig.seo.defaultDescription,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

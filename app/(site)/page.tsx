@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Phone, ArrowRight, ShieldCheck, CheckCircle2, Clock, Calendar } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl, offeredServices, isDemo } from "@/lib/config/site";
+import { offeredServices, isDemo } from "@/lib/config/site";
 import {
   Section,
   Container,
@@ -18,16 +18,17 @@ import {
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
 import { ServiceIcon } from "@/components/site/icons";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { buildElectricianSchema, buildFaqSchema } from "@/lib/seo/schema";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export function generateMetadata(): Metadata {
   const tagline = parsedClientConfig.positioning?.tagline;
-  return {
-    title: `${parsedClientConfig.business.name}${tagline ? ` | ${tagline}` : ""}`,
+  return buildMetadata({
+    title: tagline || "Electrical Contractor",
     description: parsedClientConfig.seo.defaultDescription,
-    alternates: {
-      canonical: canonicalUrl("/"),
-    },
-  };
+    path: "/",
+  });
 }
 
 export default function HomePage() {
@@ -35,6 +36,9 @@ export default function HomePage() {
     parsedClientConfig;
   const services = offeredServices();
   const demo = isDemo();
+
+  const electricianSchema = buildElectricianSchema();
+  const faqSchema = faqs && faqs.length > 0 ? buildFaqSchema(faqs) : null;
 
   // Find hero project image
   const heroProject = projects.find((p) => p.title.toLowerCase().includes("hero")) || projects[0];
@@ -110,6 +114,7 @@ export default function HomePage() {
 
   return (
     <>
+      <JsonLd data={faqSchema ? [electricianSchema, faqSchema] : electricianSchema} />
       {/* Hero Section */}
       <Section tone="dark" blueprint={true} className="pt-16 pb-20 sm:pt-24 sm:pb-28">
         <Container>

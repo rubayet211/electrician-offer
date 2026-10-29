@@ -2,17 +2,15 @@ import React from "react";
 import type { Metadata } from "next";
 import { FileText } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl } from "@/lib/config/site";
 import { Section, Container, Notice } from "@/components/ui";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `Terms of Service | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "Terms of Service",
     description: `Terms and conditions governing estimates, services, and online communication with ${parsedClientConfig.business.name}.`,
-    alternates: {
-      canonical: canonicalUrl("/terms"),
-    },
-  };
+    path: "/terms",
+  });
 }
 
 export default function TermsPage() {

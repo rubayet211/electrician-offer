@@ -2,17 +2,15 @@ import React from "react";
 import type { Metadata } from "next";
 import { ShieldCheck, Mail } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl } from "@/lib/config/site";
 import { Section, Container } from "@/components/ui";
+import { buildMetadata } from "@/lib/seo/metadata";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `Privacy Policy | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "Privacy Policy",
     description: `Plain-language privacy policy explaining data collection, non-retention policies, and security practices for ${parsedClientConfig.business.name}.`,
-    alternates: {
-      canonical: canonicalUrl("/privacy"),
-    },
-  };
+    path: "/privacy",
+  });
 }
 
 export default function PrivacyPage() {

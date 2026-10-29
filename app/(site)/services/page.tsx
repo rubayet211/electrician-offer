@@ -3,20 +3,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Phone } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl, offeredServices } from "@/lib/config/site";
+import { offeredServices } from "@/lib/config/site";
 import { Section, Container, Card, Notice } from "@/components/ui";
 import { CallLink } from "@/components/site/CallLink";
 import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
 import { ServiceIcon } from "@/components/site/icons";
+import { buildMetadata } from "@/lib/seo/metadata";
+import { buildBreadcrumbSchema } from "@/lib/seo/schema";
+import { JsonLd } from "@/components/seo/JsonLd";
 
 export function generateMetadata(): Metadata {
-  return {
-    title: `Electrical Services | ${parsedClientConfig.business.name}`,
+  return buildMetadata({
+    title: "Electrical Services",
     description: `Comprehensive electrical contractor services in ${parsedClientConfig.business.address.city}, ${parsedClientConfig.business.address.state}. Repairs, panel upgrades, EV chargers, lighting, and inspections.`,
-    alternates: {
-      canonical: canonicalUrl("/services"),
-    },
-  };
+    path: "/services",
+  });
 }
 
 export default function ServicesPage() {
@@ -76,8 +77,15 @@ export default function ServicesPage() {
       : []),
   ].filter((g) => g.items.length > 0);
 
+  const domain = business.domain.replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  const breadcrumbSchema = buildBreadcrumbSchema([
+    { name: "Home", url: `https://${domain}/` },
+    { name: "Services", url: `https://${domain}/services` },
+  ]);
+
   return (
     <>
+      <JsonLd data={breadcrumbSchema} />
       {/* Header Banner */}
       <Section tone="dark" blueprint={true} className="py-14 sm:py-20">
         <Container>
