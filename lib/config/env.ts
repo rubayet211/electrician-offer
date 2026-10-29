@@ -1,0 +1,50 @@
+import { z } from "zod";
+import { parsedClientConfig } from "@/config/client.config";
+import type { ClientConfig } from "@/types/client-config";
+const envSchema = z.object({
+  DATABASE_URL: z.string().optional(),
+  DATABASE_CA_CERT: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  IP_HASH_SECRET: z.string().optional(),
+  ADMIN_PASSWORD_HASH: z.string().optional(),
+  ADMIN_SESSION_SECRET: z.string().optional(),
+  AI_SESSION_SECRET: z.string().optional(),
+  OPENROUTER_API_KEY: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
+  DEMO_AI_LIVE: z.enum(["true", "false"]).optional(),
+  NEXT_PUBLIC_SITE_ENV: z.enum(["demo", "staging", "production"]).optional(),
+});
+export function assertProductionReady(
+  config: unknown = parsedClientConfig,
+  env: Record<string, string | undefined> = process.env,
+): string[] {
+  const problems: string[] = [];
+  if (JSON.stringify(config).includes("__REQUIRED__"))
+    problems.push("Client config contains required placeholders");
+  for (const key of [
+    "DATABASE_URL",
+    "RESEND_API_KEY",
+    "IP_HASH_SECRET",
+    "ADMIN_PASSWORD_HASH",
+    "ADMIN_SESSION_SECRET",
+    "AI_SESSION_SECRET",
+    "CRON_SECRET",
+  ])
+    if (!env[key]) problems.push(`${key} is required`);
+  const ai = (config as Partial<ClientConfig>).ai;
+  if (
+    ai?.enabled &&
+    ((config as Partial<ClientConfig>).mode !== "demo" || env.DEMO_AI_LIVE === "true") &&
+    !env.OPENROUTER_API_KEY
+  )
+    problems.push("OPENROUTER_API_KEY is required");
+  return problems;
+}
+export function getServerEnv() {
+  const env = envSchema.parse(process.env);
+  if (process.env.NODE_ENV === "production") {
+    const problems = assertProductionReady(parsedClientConfig, env);
+    if (problems.length) throw new Error(problems.join("; "));
+  }
+  return env;
+}

@@ -13,15 +13,16 @@ Stack kept: Next.js 16.2.x App Router, React 19, TypeScript strict, Tailwind 4, 
 One isolated deployment + one database per client. No multi-tenant SaaS, no CMS, no CRM.
 
 ### Plumbing weaknesses fixed here (do not inherit)
-| Plumbing | Electrician |
-|---|---|
-| PG `ssl: { rejectUnauthorized: false }` | TLS verified. `DATABASE_CA_CERT` optional; plain TCP only for localhost |
-| Lead fallback to `os.tmpdir()` JSON | Production requires `DATABASE_URL`; memory store only for tests/dev, refused when `NODE_ENV=production` |
-| In-memory `Map` rate limiter | Postgres fixed-window counter (`INSERT … ON CONFLICT … RETURNING`), works across instances |
-| Client-chosen chat `sessionId` | Server-issued signed httpOnly cookie session |
-| Model tool writes lead directly | Model can only *prepare a draft*; human clicks Confirm → server creates lead |
-| Report hardcodes "SSL Valid & Auto-Renewed" | Reports only measured facts; maintenance items are manual entries |
-| Dedupe only | Idempotency key (unique) + content-hash dedupe window |
+
+| Plumbing                                    | Electrician                                                                                             |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| PG `ssl: { rejectUnauthorized: false }`     | TLS verified. `DATABASE_CA_CERT` optional; plain TCP only for localhost                                 |
+| Lead fallback to `os.tmpdir()` JSON         | Production requires `DATABASE_URL`; memory store only for tests/dev, refused when `NODE_ENV=production` |
+| In-memory `Map` rate limiter                | Postgres fixed-window counter (`INSERT … ON CONFLICT … RETURNING`), works across instances              |
+| Client-chosen chat `sessionId`              | Server-issued signed httpOnly cookie session                                                            |
+| Model tool writes lead directly             | Model can only _prepare a draft_; human clicks Confirm → server creates lead                            |
+| Report hardcodes "SSL Valid & Auto-Renewed" | Reports only measured facts; maintenance items are manual entries                                       |
+| Dedupe only                                 | Idempotency key (unique) + content-hash dedupe window                                                   |
 
 ## 1. Layout
 
@@ -90,9 +91,10 @@ supplies plus verification status.
 ## 3. Inquiry pipeline (shared by form and AI)
 
 `submitInquiry(input, ctx)` in `lib/inquiries/service.ts` is the ONLY lead writer.
+
 1. zod parse (`lib/inquiries/schema.ts`): base `{ name, phone (US 10-digit normalize), email?, zip
-   (5-digit) or location, serviceSlug (must be an offered service), description (10–2000),
-   urgency: "routine"|"soon"|"urgent", consent: true, details }` + discriminated `details` per formType:
+(5-digit) or location, serviceSlug (must be an offered service), description (10–2000),
+urgency: "routine"|"soon"|"urgent", consent: true, details }` + discriminated `details` per formType:
    - panel: `reason` enum(adding_load|ev_charger|renovation|old_or_problem_panel|insurance_or_sale|other), `panelInfoKnown?` text ≤200 (optional, "only if known"), `propertyType` enum(single_family|townhome_condo|multi_family|commercial)
    - ev_charger: `vehicleOrCharger?` ≤120, `propertyType` enum(residential|commercial), `ownsCharger` enum(yes|no|not_sure), `installLocation` enum(garage|driveway_exterior|parking_lot|other)
    - troubleshooting: `startedWhen` enum(today|this_week|longer|not_sure) ; issue text = description
@@ -152,6 +154,7 @@ Sessions: `/api/ai-chat` issues `ai_sid` signed cookie (HMAC `AI_SESSION_SECRET`
 Secure in prod). Client-sent IDs ignored. Same session within 30 min inactivity = same conversation.
 
 Conversation & quota (atomic, store-backed):
+
 - New conversation requires: visitor (ip-hash) under `newConversationsPerVisitorPerDay`, then
   `reserve`: `UPDATE ai_usage_months SET reserved=reserved+1 WHERE month=$1 AND used+reserved < $2`
   (row upserted first). No row → quota exhausted → no model call.
@@ -216,3 +219,5 @@ photo". Touch targets ≥44px. Sticky mobile bar: Call + Request Estimate.
 `DATABASE_URL`, `DATABASE_CA_CERT?`, `RESEND_API_KEY`, `IP_HASH_SECRET`, `ADMIN_PASSWORD_HASH`,
 `ADMIN_SESSION_SECRET`, `AI_SESSION_SECRET`, `OPENROUTER_API_KEY?` (required if ai.enabled and not demo),
 `CRON_SECRET`, `DEMO_AI_LIVE?`, `NEXT_PUBLIC_SITE_ENV?`.
+
+Vercel Hobby deployments cannot schedule a cron more than once per day; the 15-minute notification retry requires an eligible Vercel plan or an external scheduler.

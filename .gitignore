@@ -48,3 +48,4 @@ next-env.d.ts
 !clients/**/.env.example
 test-results/
 playwright-report/
+.tmp/
