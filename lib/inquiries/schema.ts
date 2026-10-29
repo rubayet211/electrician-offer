@@ -121,9 +121,12 @@ export const inquiryBaseSchema = z.object({
   company_website: z.string().max(200).optional(),
   formStartedAt: z.coerce.number().optional(),
   idempotencyKey: z.uuid(),
-  sourcePage: z.string().max(500).optional(),
+  sourcePage: z
+    .string()
+    .regex(/^\/[A-Za-z0-9/_-]{0,200}$/)
+    .optional(),
   utm: z
-    .record(z.string().max(80), z.string().max(200))
+    .record(z.string().regex(/^[a-z_]{1,32}$/), z.string().max(120))
     .refine((value) => Object.keys(value).length <= 10)
     .optional(),
 });

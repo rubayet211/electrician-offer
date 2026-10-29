@@ -12,7 +12,7 @@ export type InquiryResult = {
   status: number;
   reference?: string;
   duplicate?: boolean;
-  notification: "queued" | "demo";
+  notification: "queued" | "demo" | "none";
   warnings: string[];
   fieldErrors?: Record<string, string[]>;
 };
@@ -31,7 +31,7 @@ export async function submitInquiry(
   const fallback: InquiryResult = {
     ok: false,
     status: 400,
-    notification: config.mode === "demo" ? "demo" : "queued",
+    notification: "none",
     warnings: [],
   };
   const parsed = (ctx.source === "ai_chat" ? aiInquirySchema : inquirySchema).safeParse(raw);
@@ -61,6 +61,7 @@ export async function submitInquiry(
         ok: true,
         status: 200,
         reference: replay.reference,
+        warnings: ctx.files?.length ? ["Photos could not be attached"] : [],
         notification: replay.isDemo ? "demo" : "queued",
       };
     const hash = createHash("sha256").update(
@@ -78,10 +79,16 @@ export async function submitInquiry(
         ok: true,
         status: 200,
         reference: duplicate.reference,
+        warnings: ctx.files?.length ? ["Photos could not be attached"] : [],
         duplicate: true,
         notification: duplicate.isDemo ? "demo" : "queued",
       };
-    const uploads = await validateUploads(ctx.files ?? []);
+    let uploads: Awaited<ReturnType<typeof validateUploads>>;
+    try {
+      uploads = await validateUploads(ctx.files ?? []);
+    } catch {
+      uploads = { files: [], warnings: ["Photos could not be attached"] };
+    }
     const id = randomUUID(),
       createdAt = now.toISOString();
     const lead: Lead = {
@@ -104,25 +111,38 @@ export async function submitInquiry(
       leadId: id,
       createdAt,
     }));
-    const saved = await store.leads.create(lead, attachments);
+    let saved: Lead;
+    try {
+      saved = await store.leads.create(lead, attachments);
+    } catch (error) {
+      if (!attachments.length) throw error;
+      lead.photoCount = 0;
+      uploads.warnings.push("Photos could not be attached");
+      saved = await store.leads.create(lead, []);
+    }
     if (saved.id !== id)
       return {
         ...fallback,
         ok: true,
         status: 200,
         reference: saved.reference,
+        warnings: ctx.files?.length ? ["Photos could not be attached"] : [],
         duplicate: saved.idempotencyKey !== data.idempotencyKey || undefined,
         notification: saved.isDemo ? "demo" : "queued",
       };
-    if (lead.isDemo) await store.leads.setNotification(id, "skipped_demo");
-    else if (await store.leads.claimNotification(id, new Date())) {
-      const result = await sendLeadNotificationEmail(lead);
-      await store.leads.finishNotification(
-        id,
-        result.ok ? "sent" : "failed",
-        result.error,
-        result.providerId,
-      );
+    try {
+      if (lead.isDemo) await store.leads.setNotification(id, "skipped_demo");
+      else if (await store.leads.claimNotification(id, new Date())) {
+        const result = await sendLeadNotificationEmail(lead);
+        await store.leads.finishNotification(
+          id,
+          result.ok ? "sent" : "failed",
+          result.error,
+          result.providerId,
+        );
+      }
+    } catch {
+      logEvent("notify_error", lead.reference);
     }
     return {
       ...fallback,

@@ -98,7 +98,7 @@ export class PgStore implements Store {
     list: async (f: LeadFilter = {}, p: { limit?: number; offset?: number } = {}) =>
       (
         await this.db.query<Lead>(
-          `SELECT ${leadColumns} FROM leads WHERE ($1::text IS NULL OR service_slug=$1) AND ($2::text IS NULL OR status=$2) AND ($3::text IS NULL OR source=$3) AND ($4::text IS NULL OR position($4 in reference)>0) AND ($5::text[] IS NULL OR notification_status=ANY($5)) AND ($8::timestamptz IS NULL OR (notification_attempts<5 AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60, power(2,notification_attempts)) <= $8))) ORDER BY created_at DESC LIMIT $6 OFFSET $7`,
+          `SELECT ${leadColumns} FROM leads WHERE ($1::text IS NULL OR service_slug=$1) AND ($2::text IS NULL OR status=$2) AND ($3::text IS NULL OR source=$3) AND ($4::text IS NULL OR position($4 in reference)>0) AND ($5::text[] IS NULL OR notification_status=ANY($5)) AND ($8::timestamptz IS NULL OR ((notification_status='sending' AND notification_last_attempt_at + interval '10 minutes' <= $8) OR (notification_status<>'sending' AND notification_attempts>=5) OR (notification_status<>'sending' AND notification_attempts<5 AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60, power(2,notification_attempts)) <= $8)))) ORDER BY created_at DESC LIMIT $6 OFFSET $7`,
           [
             f.serviceSlug ?? null,
             f.status ?? null,
@@ -123,7 +123,7 @@ export class PgStore implements Store {
     },
     claimNotification: async (id: string, now: Date) =>
       !!(await this.one(
-        "UPDATE leads SET notification_attempts=notification_attempts+1,notification_last_attempt_at=$2 WHERE id=$1 AND notification_status IN ('pending','failed') AND notification_attempts<5 AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60,power(2,notification_attempts)) <= $2) RETURNING id",
+        "UPDATE leads SET notification_status='sending',notification_attempts=notification_attempts+1,notification_last_attempt_at=$2 WHERE id=$1 AND notification_attempts<5 AND ((notification_status='sending' AND notification_last_attempt_at + interval '10 minutes' <= $2) OR (notification_status IN ('pending','failed') AND (notification_last_attempt_at IS NULL OR notification_last_attempt_at + interval '1 minute' * least(60,power(2,notification_attempts)) <= $2))) RETURNING id",
         [id, now.toISOString()],
       )),
     finishNotification: async (
@@ -133,7 +133,7 @@ export class PgStore implements Store {
       providerId?: string,
     ) => {
       await this.db.query(
-        "UPDATE leads SET notification_status=$2,notification_last_error=$3,notification_provider_id=$4 WHERE id=$1",
+        "UPDATE leads SET notification_status=CASE WHEN $2='failed' AND notification_attempts>=5 THEN 'failed_final' ELSE $2 END,notification_last_error=$3,notification_provider_id=$4 WHERE id=$1",
         [id, status, error ?? null, providerId ?? null],
       );
     },
@@ -163,6 +163,12 @@ export class PgStore implements Store {
       ).rows.length,
   };
   rateLimit = {
+    purgeOlderThan: async (date: Date) =>
+      (
+        await this.db.query("DELETE FROM rate_limits WHERE window_start<$1 RETURNING key", [
+          date.toISOString(),
+        ])
+      ).rows.length,
     hit: async (key: string, limit: number, windowMs: number) => {
       const start = Math.floor(Date.now() / windowMs) * windowMs;
       const row = await this.one<{ count: number }>(
@@ -178,6 +184,12 @@ export class PgStore implements Store {
     },
   };
   analytics = {
+    purgeOlderThan: async (date: Date) =>
+      (
+        await this.db.query("DELETE FROM analytics_events WHERE created_at<$1 RETURNING id", [
+          date.toISOString(),
+        ])
+      ).rows.length,
     record: async (e: AnalyticsEvent) => {
       await this.db.query(
         "INSERT INTO analytics_events(id,type,page,service_slug,created_at) VALUES ($1,$2,$3,$4,$5)",

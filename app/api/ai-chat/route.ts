@@ -1,3 +1,4 @@
+import { readBody } from "@/lib/http/read-body";
 import {
   createUIMessageStream,
   createUIMessageStreamResponse,
@@ -50,24 +51,6 @@ function parseMessages(value: unknown): ModelMessage[] | null {
   return messages.at(-1)?.role === "user" ? messages.slice(-20) : null;
 }
 
-async function readBody(request: Request): Promise<string | null> {
-  if (Number(request.headers.get("content-length")) > 200000 || !request.body) return null;
-  const reader = request.body.getReader();
-  const decoder = new TextDecoder();
-  let size = 0;
-  let result = "";
-  while (true) {
-    const part = await reader.read();
-    if (part.done) return result + decoder.decode();
-    size += part.value.byteLength;
-    if (size > 200000) {
-      await reader.cancel();
-      return null;
-    }
-    result += decoder.decode(part.value, { stream: true });
-  }
-}
-
 function cookieHeader(id: string): string {
   return `ai_sid=${signSession(id)}; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
 }
@@ -82,7 +65,13 @@ function cookieValue(request: Request): string | undefined {
 function unavailable(reason: string, status: number, cookie?: string): Response {
   return Response.json(
     { unavailable: true, reason },
-    { status, headers: cookie ? { "Set-Cookie": cookie } : undefined },
+    {
+      status,
+      headers: {
+        ...(cookie ? { "Set-Cookie": cookie } : {}),
+        ...(status === 429 ? { "Retry-After": "60" } : {}),
+      },
+    },
   );
 }
 
@@ -120,9 +109,11 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: "Origin not allowed." }, { status: 403 });
   let messages: ModelMessage[] | null;
   try {
-    const body = await readBody(request);
+    const body = await readBody(request, 200000);
     if (body === null) return Response.json({ error: "Invalid request." }, { status: 400 });
-    messages = parseMessages((JSON.parse(body) as { messages?: unknown }).messages);
+    messages = parseMessages(
+      (JSON.parse(new TextDecoder().decode(body)) as { messages?: unknown }).messages,
+    );
   } catch {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }

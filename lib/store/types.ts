@@ -1,5 +1,6 @@
 import type { Inquiry } from "@/lib/inquiries/schema";
-export type NotificationStatus = "pending" | "sent" | "failed" | "skipped_demo";
+export type NotificationStatus =
+  "pending" | "sending" | "sent" | "failed" | "failed_final" | "skipped_demo";
 export type Lead = Inquiry & {
   id: string;
   reference: string;
@@ -95,6 +96,7 @@ export interface Store {
     purgeOlderThan(date: Date): Promise<number>;
   };
   rateLimit: {
+    purgeOlderThan(date: Date): Promise<number>;
     hit(
       key: string,
       limit: number,
@@ -102,6 +104,7 @@ export interface Store {
     ): Promise<{ allowed: boolean; remaining: number; resetAt: number }>;
   };
   analytics: {
+    purgeOlderThan(date: Date): Promise<number>;
     record(event: AnalyticsEvent): Promise<void>;
     countByType(start: Date, end: Date): Promise<Record<string, number>>;
   };

@@ -82,6 +82,45 @@ it("retries eligible failures and stops after five attempts", async () => {
   await store.leads.create(lead, []);
   expect(await retryPendingNotifications(10, store)).toBe(1);
   expect((await store.leads.get("lead"))?.notificationAttempts).toBe(5);
+  expect((await store.leads.get("lead"))?.notificationStatus).toBe("failed_final");
   expect(await retryPendingNotifications(10, store)).toBe(0);
   expect(fetchSpy).toHaveBeenCalledTimes(1);
+});
+
+it("reclaims abandoned notification claims after ten minutes", async () => {
+  const store = new MemoryStore();
+  const result = await submitInquiry(raw, { ipHash: "hash", source: "contact_form", store });
+  const lead = (await store.leads.findByIdempotencyKey(raw.idempotencyKey))!;
+  const freshStore = new MemoryStore();
+  await freshStore.leads.create(
+    {
+      ...lead,
+      notificationStatus: "pending",
+      notificationAttempts: 0,
+      notificationLastAttemptAt: undefined,
+    },
+    [],
+  );
+  const old = new Date(Date.now() - 11 * 60000);
+  expect(await freshStore.leads.claimNotification(lead.id, old)).toBe(true);
+  expect(await freshStore.leads.claimNotification(lead.id, new Date(+old + 9 * 60000))).toBe(false);
+  expect(await freshStore.leads.claimNotification(lead.id, new Date())).toBe(true);
+  expect(result.status).toBe(201);
+});
+
+it("caps retry batches at fifteen", async () => {
+  const store = new MemoryStore();
+  const list = vi.spyOn(store.leads, "list");
+  await retryPendingNotifications(100, store);
+  expect(list.mock.calls[0][1]?.limit).toBe(15);
+});
+
+it("marks existing exhausted failures as final", async () => {
+  const store = new MemoryStore();
+  await submitInquiry(raw, { ipHash: "hash", source: "contact_form", store });
+  const lead = (await store.leads.findByIdempotencyKey(raw.idempotencyKey))!;
+  const target = new MemoryStore();
+  await target.leads.create({ ...lead, notificationStatus: "failed", notificationAttempts: 5 }, []);
+  await retryPendingNotifications(15, target);
+  expect((await target.leads.get(lead.id))?.notificationStatus).toBe("failed_final");
 });

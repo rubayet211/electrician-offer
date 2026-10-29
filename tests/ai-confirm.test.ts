@@ -55,3 +55,9 @@ it("requires consent, enforces session binding and replays the same reference", 
   expect(await store.leads.list()).toHaveLength(1);
   expect((await store.leads.list())[0].source).toBe("ai_chat");
 });
+
+it("reports no notification on failed confirmation", async () => {
+  const response = await POST(request({ consent: false }));
+  expect(response.status).toBe(400);
+  expect(await response.json()).toMatchObject({ notification: "none" });
+});

@@ -103,7 +103,7 @@ urgency: "routine"|"soon"|"urgent", consent: true, details }` + discriminated `d
    - general: none
 2. Spam: honeypot field `company_website` must be empty; `formStartedAt` must be ≥3s ago and ≤24h.
 3. Origin check (POST): `Origin` host ∈ {business.domain, www., VERCEL_URL, localhost in dev}.
-4. Rate limit: 5 inquiries / 10 min / ip-hash (store-backed).
+4. Rate limit: 5 inquiries / 10 min / ip-hash (store-backed). Missing IPs share an `unknown` bucket in every environment; production logs the missing address without IP data.
 5. Idempotency: client sends `idempotencyKey` (uuid). Unique index. Replay → return original result.
 6. Dedupe: `sha256(normPhone|serviceSlug|normDescription)` within 15 min → return existing reference
    with `duplicate: true`.

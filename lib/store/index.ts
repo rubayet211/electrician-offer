@@ -21,16 +21,21 @@ export function getStore(): Store {
         ...queryAdapter(pool),
         transaction: async <T>(fn: (db: DbQuery) => Promise<T>) => {
           const client = await pool.connect();
+          let discard = false;
           try {
             await client.query("BEGIN");
             const value = await fn(queryAdapter(client));
             await client.query("COMMIT");
             return value;
           } catch (error) {
-            await client.query("ROLLBACK");
+            try {
+              await client.query("ROLLBACK");
+            } catch {
+              discard = true;
+            }
             throw error;
           } finally {
-            client.release();
+            client.release(discard);
           }
         },
       };

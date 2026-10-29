@@ -1,42 +1,35 @@
+import { readBody } from "@/lib/http/read-body";
+import { getStore } from "@/lib/store";
 import { submitInquiry } from "@/lib/inquiries/service";
 import { isAllowedOrigin } from "@/lib/security/origin";
 import { clientIp } from "@/lib/security/client-ip";
 import { hashIp } from "@/lib/security/hash";
 const MAX_BODY = 15 * 1024 * 1024;
-async function readBody(req: Request): Promise<Uint8Array | null> {
-  if (Number(req.headers.get("content-length")) > MAX_BODY) return null;
-  if (!req.body) return new Uint8Array();
-  const reader = req.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    size += value.length;
-    if (size > MAX_BODY) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  const result = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
-}
 export async function POST(req: Request): Promise<Response> {
-  const base = { ok: false, notification: "queued", warnings: [] };
+  const base = { ok: false, notification: "none", warnings: [] };
   if (!isAllowedOrigin(req)) return Response.json(base, { status: 403 });
+  let ipHash: string;
   try {
-    const bytes = await readBody(req);
+    ipHash = hashIp(clientIp(req));
+    const limit = await getStore().rateLimit.hit(`lead-body:${ipHash}`, 20, 600000);
+    if (!limit.allowed)
+      return Response.json(base, {
+        status: 429,
+        headers: {
+          "Retry-After": String(Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000))),
+        },
+      });
+  } catch {
+    return Response.json(base, { status: 503 });
+  }
+  try {
+    const bytes = await readBody(req, MAX_BODY);
     if (!bytes) return Response.json(base, { status: 413 });
     const contentType = req.headers.get("content-type") ?? "";
+    const contentTypeLower = contentType.toLowerCase();
     let raw: unknown;
     const files: File[] = [];
-    if (contentType.startsWith("multipart/form-data")) {
+    if (contentTypeLower.startsWith("multipart/form-data")) {
       const form = await new Request(req.url, {
         method: "POST",
         headers: { "content-type": contentType },
@@ -56,17 +49,20 @@ export async function POST(req: Request): Promise<Response> {
           object[key] = JSON.parse(object[key] as string);
       object.consent = object.consent === "true";
       raw = object;
-    } else if (contentType.startsWith("application/json"))
+    } else if (contentTypeLower.startsWith("application/json"))
       raw = JSON.parse(new TextDecoder().decode(bytes));
     else return Response.json(base, { status: 400 });
     try {
       const result = await submitInquiry(raw, {
-        ipHash: hashIp(clientIp(req)),
+        ipHash,
         source: "contact_form",
         files,
       });
       const { status, ...body } = result;
-      return Response.json(body, { status });
+      return Response.json(body, {
+        status,
+        headers: status === 429 ? { "Retry-After": "600" } : undefined,
+      });
     } catch {
       return Response.json(base, { status: 503 });
     }

@@ -12,34 +12,34 @@ export async function sendLeadNotificationEmail(
 ): Promise<{ ok: boolean; providerId?: string; error?: string }> {
   if (lead.isDemo) return { ok: true };
   if (!process.env.RESEND_API_KEY) return { ok: false, error: "MissingApiKey" };
-  const inquiryDetails = lead.details;
-  const details = Object.entries(inquiryDetails ?? {})
-    .filter(([key, value]) => key !== "formType" && value)
-    .map(([key, value]) => {
-      const fields: readonly {
-        name: string;
-        label: string;
-        options?: readonly { value: string; label: string }[];
-      }[] = inquiryDetails ? FORM_FIELDS_BY_TYPE[inquiryDetails.formType] : [];
-      const field = fields.find((f) => f.name === key);
-      return `${field?.label ?? key}: ${field?.options?.find((o) => o.value === value)?.label ?? String(value)}`;
-    });
-  const lines = [
-    `Reference: ${lead.reference}`,
-    `Name: ${lead.name}`,
-    `Phone: ${lead.phone}`,
-    `Email: ${lead.email || "Not provided"}`,
-    `Service: ${config.services.find((s) => s.slug === lead.serviceSlug)?.title ?? lead.serviceSlug}`,
-    `Description: ${lead.description}`,
-    ...details,
-    `Location: ${[lead.zip, lead.location].filter(Boolean).join(" ")}`,
-    `Urgency: ${lead.urgency}`,
-    `Photos: ${lead.photoCount}`,
-    `Admin: https://${config.business.domain}/admin/leads/${encodeURIComponent(lead.id)}`,
-    `Source: ${lead.source}`,
-    `Submitted: ${new Date(lead.createdAt).toLocaleString("en-US", { timeZone: config.business.timezone })}`,
-  ];
   try {
+    const inquiryDetails = lead.details;
+    const details = Object.entries(inquiryDetails ?? {})
+      .filter(([key, value]) => key !== "formType" && value)
+      .map(([key, value]) => {
+        const fields: readonly {
+          name: string;
+          label: string;
+          options?: readonly { value: string; label: string }[];
+        }[] = inquiryDetails ? FORM_FIELDS_BY_TYPE[inquiryDetails.formType] : [];
+        const field = fields.find((f) => f.name === key);
+        return `${field?.label ?? key}: ${field?.options?.find((o) => o.value === value)?.label ?? String(value)}`;
+      });
+    const lines = [
+      `Reference: ${lead.reference}`,
+      `Name: ${lead.name}`,
+      `Phone: ${lead.phone}`,
+      `Email: ${lead.email || "Not provided"}`,
+      `Service: ${config.services.find((s) => s.slug === lead.serviceSlug)?.title ?? lead.serviceSlug}`,
+      `Description: ${lead.description}`,
+      ...details,
+      `Location: ${[lead.zip, lead.location].filter(Boolean).join(" ")}`,
+      `Urgency: ${lead.urgency}`,
+      `Photos: ${lead.photoCount}`,
+      `Admin: https://${config.business.domain}/admin/leads/${encodeURIComponent(lead.id)}`,
+      `Source: ${lead.source}`,
+      `Submitted: ${new Date(lead.createdAt).toLocaleString("en-US", { timeZone: config.business.timezone })}`,
+    ];
     const response = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
@@ -73,21 +73,27 @@ export async function retryPendingNotifications(
   limit: number,
   store: Store = getStore(),
 ): Promise<number> {
+  const deadline = Date.now() + 48000;
   const leads = await store.leads.list(
-    { notificationStatus: ["pending", "failed"], retryBefore: new Date() },
-    { limit },
+    { notificationStatus: ["pending", "failed", "sending"], retryBefore: new Date() },
+    { limit: Math.min(limit, 15) },
   );
   let attempted = 0;
   for (const lead of leads) {
+    if (Date.now() >= deadline) break;
+    if (lead.notificationAttempts >= 5) {
+      await store.leads.setNotification(lead.id, "failed_final");
+      continue;
+    }
     if (lead.isDemo) {
       await store.leads.setNotification(lead.id, "skipped_demo");
       continue;
     }
     if (
-      lead.notificationAttempts >= 5 ||
-      (lead.notificationLastAttemptAt &&
-        Date.now() - +new Date(lead.notificationLastAttemptAt) <
-          Math.min(3600000, 60000 * 2 ** lead.notificationAttempts))
+      lead.notificationStatus !== "sending" &&
+      lead.notificationLastAttemptAt &&
+      Date.now() - +new Date(lead.notificationLastAttemptAt) <
+        Math.min(3600000, 60000 * 2 ** lead.notificationAttempts)
     )
       continue;
     if (!(await store.leads.claimNotification(lead.id, new Date()))) continue;

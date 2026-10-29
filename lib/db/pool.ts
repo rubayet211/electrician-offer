@@ -1,14 +1,6 @@
 import { Pool } from "pg";
-export function databaseSsl(url: string, ca?: string, nodeEnv = process.env.NODE_ENV) {
-  const parsed = new URL(url);
-  if (
-    nodeEnv !== "production" &&
-    (["localhost", "127.0.0.1"].includes(parsed.hostname) ||
-      parsed.searchParams.get("sslmode") === "disable")
-  )
-    return false;
-  return { rejectUnauthorized: true as const, ...(ca ? { ca } : {}) };
-}
+import { databaseSsl } from "./ssl.mjs";
+export { databaseSsl };
 let pool: Pool | undefined;
 export function getPool(): Pool {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is required");
@@ -17,8 +9,15 @@ export function getPool(): Pool {
     url.searchParams.delete("sslmode");
     pool = new Pool({
       connectionString: url.toString(),
+      max: 5,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 10000,
+      statement_timeout: 10000,
       ssl: databaseSsl(process.env.DATABASE_URL, process.env.DATABASE_CA_CERT),
     });
+    pool.on("error", (error) =>
+      console.error(JSON.stringify({ event: "pool_error", errorClass: error.name })),
+    );
   }
   return pool;
 }

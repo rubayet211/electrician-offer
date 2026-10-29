@@ -23,7 +23,12 @@ export async function validateUploads(
       warnings.push(`Photo ${index + 1} was not accepted.`);
       continue;
     }
-    valid.push({ name: file.name, contentType, data });
+    const name = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(0, 80);
+    valid.push({
+      name: name && /[A-Za-z0-9]/.test(name) ? name : `photo-${index + 1}`,
+      contentType,
+      data,
+    });
   }
   return { files: valid, warnings };
 }

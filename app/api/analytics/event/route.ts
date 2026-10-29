@@ -1,3 +1,4 @@
+import { readBody } from "@/lib/http/read-body";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { getStore } from "@/lib/store";
@@ -19,11 +20,15 @@ const schema = z
 export async function POST(req: Request) {
   if (!isAllowedOrigin(req)) return new Response(null, { status: 403 });
   try {
-    if (Number(req.headers.get("content-length")) > 4096)
-      return new Response(null, { status: 413 });
-    const text = await req.text();
-    if (text.length > 4096) return new Response(null, { status: 413 });
-    const result = schema.safeParse(JSON.parse(text));
+    const bytes = await readBody(req, 4096);
+    if (!bytes) return new Response(null, { status: 413 });
+    let payload: unknown;
+    try {
+      payload = JSON.parse(new TextDecoder().decode(bytes));
+    } catch {
+      return new Response(null, { status: 400 });
+    }
+    const result = schema.safeParse(payload);
     if (!result.success || (result.data.serviceSlug && !getService(result.data.serviceSlug)))
       return new Response(null, { status: 400 });
     const allowedPages = new Set([
@@ -38,7 +43,7 @@ export async function POST(req: Request) {
     if (!allowedPages.has(result.data.page)) return new Response(null, { status: 400 });
     const store = getStore();
     if (!(await store.rateLimit.hit(`analytics:${hashIp(clientIp(req))}`, 60, 60000)).allowed)
-      return new Response(null, { status: 429 });
+      return new Response(null, { status: 429, headers: { "Retry-After": "60" } });
     await store.analytics.record({
       id: randomUUID(),
       ...result.data,

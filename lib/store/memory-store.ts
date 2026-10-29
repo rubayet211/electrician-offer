@@ -74,7 +74,12 @@ export class MemoryStore implements Store {
               (!filters.notificationStatus ||
                 filters.notificationStatus.includes(l.notificationStatus)) &&
               (!filters.retryBefore ||
-                (l.notificationAttempts < 5 &&
+                (l.notificationStatus === "sending" &&
+                  !!l.notificationLastAttemptAt &&
+                  +new Date(l.notificationLastAttemptAt) + 600000 <= +filters.retryBefore) ||
+                (l.notificationStatus !== "sending" && l.notificationAttempts >= 5) ||
+                (l.notificationStatus !== "sending" &&
+                  l.notificationAttempts < 5 &&
                   (!l.notificationLastAttemptAt ||
                     +new Date(l.notificationLastAttemptAt) +
                       Math.min(3600000, 60000 * 2 ** l.notificationAttempts) <=
@@ -97,15 +102,18 @@ export class MemoryStore implements Store {
       const l = this.leadMap.get(id);
       if (
         !l ||
-        !["pending", "failed"].includes(l.notificationStatus) ||
+        !["pending", "failed", "sending"].includes(l.notificationStatus) ||
         l.notificationAttempts >= 5 ||
         (l.notificationLastAttemptAt &&
           +new Date(l.notificationLastAttemptAt) +
-            Math.min(3600000, 60000 * 2 ** l.notificationAttempts) >
+            (l.notificationStatus === "sending"
+              ? 600000
+              : Math.min(3600000, 60000 * 2 ** l.notificationAttempts)) >
             +now)
       )
         return false;
       l.notificationAttempts++;
+      l.notificationStatus = "sending";
       l.notificationLastAttemptAt = now.toISOString();
       return true;
     },
@@ -117,7 +125,8 @@ export class MemoryStore implements Store {
     ) => {
       const l = this.leadMap.get(id);
       if (!l) throw new Error("Lead not found");
-      l.notificationStatus = status;
+      l.notificationStatus =
+        status === "failed" && l.notificationAttempts >= 5 ? "failed_final" : status;
       l.notificationLastError = error;
       l.notificationProviderId = providerId;
     },
@@ -153,6 +162,15 @@ export class MemoryStore implements Store {
     },
   };
   rateLimit = {
+    purgeOlderThan: async (date: Date) => {
+      let count = 0;
+      for (const key of this.limits.keys())
+        if (Number(key.slice(key.lastIndexOf(":") + 1)) < +date) {
+          this.limits.delete(key);
+          count++;
+        }
+      return count;
+    },
     hit: async (key: string, limit: number, windowMs: number) => {
       const start = Math.floor(Date.now() / windowMs) * windowMs;
       const k = `${key}:${start}`;
@@ -166,6 +184,11 @@ export class MemoryStore implements Store {
     },
   };
   analytics = {
+    purgeOlderThan: async (date: Date) => {
+      const before = this.events.length;
+      this.events = this.events.filter((event) => +new Date(event.createdAt) >= +date);
+      return before - this.events.length;
+    },
     record: async (event: AnalyticsEvent) => {
       this.events.push(structuredClone(event));
     },

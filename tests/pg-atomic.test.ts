@@ -40,6 +40,16 @@ it("serializes concurrent identical lead submissions and rolls back invalid atta
   );
   expect(new Set(first.map((l) => l.id)).size).toBe(1);
   expect(await store.leads.list()).toHaveLength(1);
+  const saved = first[0];
+  const old = new Date(Date.now() - 11 * 60000);
+  expect(await store.leads.claimNotification(saved.id, old)).toBe(true);
+  expect(
+    (await store.leads.list({ notificationStatus: ["sending"], retryBefore: new Date() })).map(
+      (lead) => lead.id,
+    ),
+  ).toContain(saved.id);
+  expect(await store.leads.claimNotification(saved.id, new Date())).toBe(true);
+  await store.leads.finishNotification(saved.id, "failed");
   const other = {
     ...base,
     id: "other",

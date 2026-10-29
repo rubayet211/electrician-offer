@@ -23,7 +23,6 @@ export function assertProductionReady(
     problems.push("Client config contains required placeholders");
   for (const key of [
     "DATABASE_URL",
-    "RESEND_API_KEY",
     "IP_HASH_SECRET",
     "ADMIN_PASSWORD_HASH",
     "ADMIN_SESSION_SECRET",
@@ -31,6 +30,27 @@ export function assertProductionReady(
     "CRON_SECRET",
   ])
     if (!env[key]) problems.push(`${key} is required`);
+  const client = config as Partial<ClientConfig>;
+  if (client.mode !== "demo" && !env.RESEND_API_KEY) problems.push("RESEND_API_KEY is required");
+  if (env.NEXT_PUBLIC_SITE_ENV === "production") {
+    if (client.mode !== "production") problems.push("Client config mode must be production");
+    if (
+      !client.business?.domain ||
+      !/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(
+        client.business.domain,
+      )
+    )
+      problems.push("Business domain must be a hostname");
+    if (
+      !client.notifications?.recipients?.length ||
+      client.notifications.recipients.some(
+        (address) =>
+          !z.email().safeParse(address).success ||
+          /@(?:[^@]*\.)?(?:example\.com|test|invalid)$/i.test(address),
+      )
+    )
+      problems.push("Production notification recipients must be valid non-example addresses");
+  }
   const ai = (config as Partial<ClientConfig>).ai;
   if (
     ai?.enabled &&

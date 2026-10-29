@@ -1,3 +1,4 @@
+export const maxDuration = 60;
 import { authorizedCron } from "@/lib/security/cron";
 import { getStore } from "@/lib/store";
 import { parsedClientConfig } from "@/config/client.config";
@@ -11,8 +12,18 @@ export async function GET(req: Request) {
     );
     const drafts = await store.aiDrafts.purgeExpired(now);
     const released = await store.aiUsage.releaseStale(new Date(+now - 600000));
-    const sessions = await store.aiSessions.purgeOlderThan(new Date(+now - 86400000));
-    return Response.json({ ok: true, attachments, drafts, released, sessions });
+    const sessions = await store.aiSessions.purgeOlderThan(new Date(+now - 60 * 86400000));
+    const rateLimits = await store.rateLimit.purgeOlderThan(new Date(+now - 86400000));
+    const analytics = await store.analytics.purgeOlderThan(new Date(+now - 400 * 86400000));
+    return Response.json({
+      ok: true,
+      attachments,
+      drafts,
+      released,
+      sessions,
+      rateLimits,
+      analytics,
+    });
   } catch {
     return Response.json({ ok: false }, { status: 503 });
   }

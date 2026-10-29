@@ -71,4 +71,38 @@ describe("submission", () => {
     expect((await submitInquiry({ ...raw, company_website: "bot" }, ctx)).status).toBe(400);
     expect((await submitInquiry({ ...raw, formStartedAt: Date.now() }, ctx)).status).toBe(400);
   });
+  it("returns the saved reference when notification bookkeeping throws", async () => {
+    const store = new MemoryStore();
+    vi.spyOn(store.leads, "setNotification").mockRejectedValue(new Error("failure"));
+    const result = await submitInquiry(raw, { ipHash: "hash", source: "contact_form", store });
+    expect(result.status).toBe(201);
+    expect(result.reference).toBeTruthy();
+  });
+  it("saves the lead when attachment persistence fails", async () => {
+    const store = new MemoryStore();
+    const create = store.leads.create.bind(store.leads);
+    vi.spyOn(store.leads, "create").mockImplementation((lead, attachments) =>
+      attachments.length ? Promise.reject(new Error("failure")) : create(lead, attachments),
+    );
+    const result = await submitInquiry(raw, {
+      ipHash: "hash",
+      source: "contact_form",
+      store,
+      files: [new File([new Uint8Array([255, 216, 255])], "photo.jpg")],
+    });
+    expect(result.status).toBe(201);
+    expect(result.warnings).toContain("Photos could not be attached");
+    expect((await store.leads.findByIdempotencyKey(raw.idempotencyKey))?.photoCount).toBe(0);
+  });
+  it("saves a lead if reading an uploaded file throws and warns on photo replay", async () => {
+    const store = new MemoryStore();
+    const file = new File([new Uint8Array([255, 216, 255])], "photo.jpg");
+    vi.spyOn(file, "arrayBuffer").mockRejectedValue(new Error("read failed"));
+    const ctx = { ipHash: "hash", source: "contact_form" as const, store, files: [file] };
+    const first = await submitInquiry(raw, ctx);
+    expect(first.status).toBe(201);
+    expect(first.warnings).toContain("Photos could not be attached");
+    const replay = await submitInquiry(raw, ctx);
+    expect(replay.warnings).toContain("Photos could not be attached");
+  });
 });
