@@ -12,14 +12,15 @@ export async function sendLeadNotificationEmail(
 ): Promise<{ ok: boolean; providerId?: string; error?: string }> {
   if (lead.isDemo) return { ok: true };
   if (!process.env.RESEND_API_KEY) return { ok: false, error: "MissingApiKey" };
-  const details = Object.entries(lead.details)
+  const inquiryDetails = lead.details;
+  const details = Object.entries(inquiryDetails ?? {})
     .filter(([key, value]) => key !== "formType" && value)
     .map(([key, value]) => {
       const fields: readonly {
         name: string;
         label: string;
         options?: readonly { value: string; label: string }[];
-      }[] = FORM_FIELDS_BY_TYPE[lead.details.formType];
+      }[] = inquiryDetails ? FORM_FIELDS_BY_TYPE[inquiryDetails.formType] : [];
       const field = fields.find((f) => f.name === key);
       return `${field?.label ?? key}: ${field?.options?.find((o) => o.value === value)?.label ?? String(value)}`;
     });

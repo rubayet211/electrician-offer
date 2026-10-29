@@ -57,6 +57,7 @@ export type Draft = {
   payload: unknown;
   expiresAt: string;
   consumedAt?: string;
+  confirmationKey?: string;
   leadId?: string;
 };
 export type AnalyticsEvent = {
@@ -119,6 +120,16 @@ export interface Store {
     releaseStale(before: Date): Promise<number>;
   };
   aiSessions: {
+    createLimited(session: Session, since: Date, limit: number): Promise<boolean>;
+    reserve(
+      id: string,
+      allowance: number,
+      since?: Date,
+      visitorLimit?: number,
+      now?: Date,
+      month?: string,
+    ): Promise<boolean>;
+    settle(id: string, success: boolean): Promise<boolean>;
     get(id: string): Promise<Session | null>;
     create(session: Session): Promise<void>;
     touch(id: string, at: Date): Promise<boolean>;
@@ -127,6 +138,7 @@ export interface Store {
     purgeOlderThan(date: Date): Promise<number>;
   };
   aiDrafts: {
+    claim(token: string, sessionId: string, key: string, now?: Date): Promise<unknown | null>;
     create(draft: Draft): Promise<void>;
     consume(token: string, sessionId: string, now?: Date): Promise<unknown | null>;
     purgeExpired(now: Date): Promise<number>;

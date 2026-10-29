@@ -49,3 +49,5 @@ next-env.d.ts
 test-results/
 playwright-report/
 .tmp/
+node-compile-cache/
+.screens/

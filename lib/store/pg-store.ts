@@ -66,7 +66,7 @@ export class PgStore implements Store {
             l.serviceSlug,
             l.description,
             l.urgency,
-            JSON.stringify(l.details),
+            JSON.stringify(l.details ?? null),
             l.consent,
             l.source,
             l.sourcePage || null,
@@ -227,6 +227,97 @@ export class PgStore implements Store {
     },
   };
   aiSessions = {
+    createLimited: async (s: Session, since: Date, limit: number) =>
+      this.db.transaction(async (tx) => {
+        await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+          "ai-visitor:" + s.visitorHash,
+        ]);
+        const count = (
+          await tx.query<{ count: number }>(
+            "SELECT count(*)::int AS count FROM ai_sessions WHERE visitor_hash=$1 AND started_at >= $2",
+            [s.visitorHash, since.toISOString()],
+          )
+        ).rows[0].count;
+        if (count >= limit) return false;
+        await tx.query(
+          "INSERT INTO ai_sessions(id,visitor_hash,month,started_at,last_activity_at,visitor_messages,counted,reservation_state) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)",
+          [
+            s.id,
+            s.visitorHash,
+            s.month,
+            s.startedAt,
+            s.lastActivityAt,
+            s.visitorMessages,
+            s.counted,
+            s.reservationState,
+          ],
+        );
+        return true;
+      }),
+    reserve: async (
+      id: string,
+      allowance: number,
+      since?: Date,
+      visitorLimit?: number,
+      now?: Date,
+      month?: string,
+    ) =>
+      this.db.transaction(async (tx) => {
+        const s = (
+          await tx.query<{
+            month: string;
+            counted: boolean;
+            reservationState: string;
+            visitorHash: string;
+          }>(
+            'SELECT month, counted, reservation_state AS "reservationState", visitor_hash AS "visitorHash" FROM ai_sessions WHERE id=$1 FOR UPDATE',
+            [id],
+          )
+        ).rows[0];
+        if (!s) return false;
+        if (s.counted) return true;
+        if (s.reservationState === "reserved") return false;
+        if (since && visitorLimit !== undefined) {
+          await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+            "ai-visitor:" + s.visitorHash,
+          ]);
+          const count = (
+            await tx.query<{ count: number }>(
+              "SELECT count(*)::int AS count FROM ai_sessions WHERE visitor_hash=$1 AND id<>$2 AND started_at >= $3 AND (counted OR reservation_state='reserved')",
+              [s.visitorHash, id, since.toISOString()],
+            )
+          ).rows[0].count;
+          if (count >= visitorLimit) return false;
+        }
+        const reserved =
+          (
+            await tx.query(
+              "INSERT INTO ai_usage_months(month,reserved) SELECT $1,1 WHERE $2>0 ON CONFLICT (month) DO UPDATE SET reserved=ai_usage_months.reserved+1 WHERE ai_usage_months.used+ai_usage_months.reserved<$2 RETURNING month",
+              [month ?? s.month, allowance],
+            )
+          ).rows.length > 0;
+        if (reserved)
+          await tx.query(
+            "UPDATE ai_sessions SET reservation_state='reserved', month=$2, started_at=COALESCE($3,started_at) WHERE id=$1",
+            [id, month ?? s.month, now?.toISOString() ?? null],
+          );
+        return reserved;
+      }),
+    settle: async (id: string, success: boolean) =>
+      this.db.transaction(async (tx) => {
+        const s = (
+          await tx.query<{ month: string }>(
+            "UPDATE ai_sessions SET reservation_state=$2, counted=$3 WHERE id=$1 AND reservation_state='reserved' RETURNING month",
+            [id, success ? "committed" : "released", success],
+          )
+        ).rows[0];
+        if (!s) return false;
+        await tx.query(
+          "UPDATE ai_usage_months SET reserved=reserved-1, used=used+$2 WHERE month=$1",
+          [s.month, success ? 1 : 0],
+        );
+        return true;
+      }),
     get: (id: string) =>
       this.one<Session>(`SELECT ${sessionColumns} FROM ai_sessions WHERE id=$1`, [id]),
     create: async (s: Session) => {
@@ -270,6 +361,13 @@ export class PgStore implements Store {
       ).rows.length,
   };
   aiDrafts = {
+    claim: async (token: string, sessionId: string, key: string, now = new Date()) =>
+      (
+        await this.one<{ payload: unknown }>(
+          "UPDATE ai_lead_drafts SET consumed_at=COALESCE(consumed_at,$4), confirmation_key=$3 WHERE token=$1 AND session_id=$2 AND expires_at>$4 AND (consumed_at IS NULL OR confirmation_key=$3) RETURNING payload",
+          [token, sessionId, key, now.toISOString()],
+        )
+      )?.payload ?? null,
     create: async (d: Draft) => {
       await this.db.query(
         "INSERT INTO ai_lead_drafts(token,session_id,payload,expires_at,consumed_at,lead_id) VALUES ($1,$2,$3,$4,$5,$6)",

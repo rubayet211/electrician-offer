@@ -235,6 +235,61 @@ export class MemoryStore implements Store {
     },
   };
   aiSessions = {
+    createLimited: async (session: Session, since: Date, limit: number) => {
+      if (
+        [...this.sessions.values()].filter(
+          (s) => s.visitorHash === session.visitorHash && +new Date(s.startedAt) >= +since,
+        ).length >= limit
+      )
+        return false;
+      if (this.sessions.has(session.id)) throw new Error("Session conflict");
+      this.sessions.set(session.id, structuredClone(session));
+      return true;
+    },
+    reserve: async (
+      id: string,
+      allowance: number,
+      since?: Date,
+      visitorLimit?: number,
+      now?: Date,
+      month?: string,
+    ) => {
+      const s = this.sessions.get(id);
+      if (!s) return false;
+      if (s.counted) return true;
+      if (s.reservationState === "reserved") return false;
+      if (
+        since &&
+        visitorLimit !== undefined &&
+        [...this.sessions.values()].filter(
+          (other) =>
+            other.id !== id &&
+            other.visitorHash === s.visitorHash &&
+            +new Date(other.startedAt) >= +since &&
+            (other.counted || other.reservationState === "reserved"),
+        ).length >= visitorLimit
+      )
+        return false;
+      const u = this.month(month ?? s.month);
+      if (u.used + u.reserved >= allowance) return false;
+      u.reserved++;
+      s.month = month ?? s.month;
+      if (now) s.startedAt = now.toISOString();
+      s.reservationState = "reserved";
+      return true;
+    },
+    settle: async (id: string, success: boolean) => {
+      const s = this.sessions.get(id);
+      if (!s || s.reservationState !== "reserved") return false;
+      const u = this.month(s.month);
+      u.reserved--;
+      if (success) {
+        u.used++;
+        s.counted = true;
+      }
+      s.reservationState = success ? "committed" : "released";
+      return true;
+    },
     get: async (id: string) => structuredClone(this.sessions.get(id) ?? null),
     create: async (session: Session) => {
       if (this.sessions.has(session.id)) throw new Error("Session conflict");
@@ -266,6 +321,19 @@ export class MemoryStore implements Store {
     },
   };
   aiDrafts = {
+    claim: async (token: string, sessionId: string, key: string, now = new Date()) => {
+      const d = this.drafts.get(token);
+      if (
+        !d ||
+        d.sessionId !== sessionId ||
+        +new Date(d.expiresAt) <= +now ||
+        (d.consumedAt && d.confirmationKey !== key)
+      )
+        return null;
+      d.consumedAt ??= now.toISOString();
+      d.confirmationKey = key;
+      return structuredClone(d.payload);
+    },
     create: async (draft: Draft) => {
       if (!this.sessions.has(draft.sessionId)) throw new Error("Session not found");
       if (this.drafts.has(draft.token)) throw new Error("Draft conflict");

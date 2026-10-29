@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { parsedClientConfig as config } from "@/config/client.config";
-import { inquirySchema } from "./schema";
+import { aiInquirySchema, inquirySchema } from "./schema";
 import { isSpam } from "@/lib/security/spam";
 import { validateUploads } from "@/lib/uploads/validate";
 import { getStore } from "@/lib/store";
@@ -34,7 +34,7 @@ export async function submitInquiry(
     notification: config.mode === "demo" ? "demo" : "queued",
     warnings: [],
   };
-  const parsed = inquirySchema.safeParse(raw);
+  const parsed = (ctx.source === "ai_chat" ? aiInquirySchema : inquirySchema).safeParse(raw);
   if (!parsed.success) {
     const fieldErrors: Record<string, string[]> = {};
     for (const issue of parsed.error.issues) {
@@ -45,7 +45,10 @@ export async function submitInquiry(
   }
   const data = parsed.data,
     now = ctx.now ?? new Date();
-  if (isSpam(data.company_website, data.formStartedAt, +now))
+  if (
+    data.company_website?.trim() ||
+    (ctx.source === "contact_form" && isSpam(data.company_website, data.formStartedAt, +now))
+  )
     return { ...fallback, fieldErrors: { form: ["Unable to accept this request."] } };
   try {
     const store = ctx.store ?? getStore();

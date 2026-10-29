@@ -104,37 +104,39 @@ export const detailsSchema = z.discriminatedUnion("formType", [
   }),
   z.object({ formType: z.literal("general") }),
 ]);
-export const inquirySchema = z
-  .object({
-    name: z.string().trim().min(2).max(100),
-    phone: z
-      .string()
-      .refine((value) => normalizePhone(value) !== null, "Enter a US phone number")
-      .transform((value) => normalizePhone(value)!),
-    email: z.union([z.email(), z.literal("")]).optional(),
-    zip: z.union([z.string().regex(/^\d{5}$/), z.literal("")]).optional(),
-    location: z.string().trim().max(200).optional(),
-    serviceSlug: z.string(),
-    description: z.string().trim().min(10).max(2000),
-    urgency: z.enum(["routine", "soon", "urgent"]),
-    consent: z.literal(true),
-    details: detailsSchema,
-    company_website: z.string().max(200).optional(),
-    formStartedAt: z.coerce.number().optional(),
-    idempotencyKey: z.uuid(),
-    sourcePage: z.string().max(500).optional(),
-    utm: z
-      .record(z.string().max(80), z.string().max(200))
-      .refine((value) => Object.keys(value).length <= 10)
-      .optional(),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.zip && !value.location)
-      ctx.addIssue({ code: "custom", path: ["zip"], message: "Enter a ZIP code or location" });
-    const service = getService(value.serviceSlug);
-    if (!service)
-      ctx.addIssue({ code: "custom", path: ["serviceSlug"], message: "Select an offered service" });
-    else if (service.formType !== value.details.formType)
-      ctx.addIssue({ code: "custom", path: ["details"], message: "Details must match service" });
-  });
-export type Inquiry = z.infer<typeof inquirySchema>;
+export const inquiryBaseSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+  phone: z
+    .string()
+    .refine((value) => normalizePhone(value) !== null, "Enter a US phone number")
+    .transform((value) => normalizePhone(value)!),
+  email: z.union([z.email(), z.literal("")]).optional(),
+  zip: z.union([z.string().regex(/^\d{5}$/), z.literal("")]).optional(),
+  location: z.string().trim().max(200).optional(),
+  serviceSlug: z.string(),
+  description: z.string().trim().min(10).max(2000),
+  urgency: z.enum(["routine", "soon", "urgent"]),
+  consent: z.literal(true),
+  details: detailsSchema,
+  company_website: z.string().max(200).optional(),
+  formStartedAt: z.coerce.number().optional(),
+  idempotencyKey: z.uuid(),
+  sourcePage: z.string().max(500).optional(),
+  utm: z
+    .record(z.string().max(80), z.string().max(200))
+    .refine((value) => Object.keys(value).length <= 10)
+    .optional(),
+});
+const aiInquiryBaseSchema = inquiryBaseSchema.extend({ details: detailsSchema.optional() });
+function validateInquiry(value: z.infer<typeof aiInquiryBaseSchema>, ctx: z.RefinementCtx) {
+  if (!value.zip && !value.location)
+    ctx.addIssue({ code: "custom", path: ["zip"], message: "Enter a ZIP code or location" });
+  const service = getService(value.serviceSlug);
+  if (!service)
+    ctx.addIssue({ code: "custom", path: ["serviceSlug"], message: "Select an offered service" });
+  else if (value.details && service.formType !== value.details.formType)
+    ctx.addIssue({ code: "custom", path: ["details"], message: "Details must match service" });
+}
+export const inquirySchema = inquiryBaseSchema.superRefine(validateInquiry);
+export const aiInquirySchema = aiInquiryBaseSchema.superRefine(validateInquiry);
+export type Inquiry = z.infer<typeof aiInquirySchema>;
