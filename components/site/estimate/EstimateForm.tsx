@@ -15,6 +15,63 @@ import type { FormState, FieldErrors, SubmissionResult } from "./types";
 
 const DRAFT_STORAGE_KEY = "axinofy_electrician_estimate_draft";
 
+function focusFirstInvalid(errorObj: FieldErrors) {
+  const fieldOrder = [
+    // Step 1
+    { key: "serviceSlug", selector: 'input[name="serviceSlug"]' },
+    { key: "urgency", selector: 'input[name="urgency"]' },
+    // Step 2
+    { key: "troubleStartedWhen", selector: "#trouble-started" },
+    { key: "panelReason", selector: "#panel-reason" },
+    { key: "panelPropertyType", selector: "#panel-property" },
+    { key: "evPropertyType", selector: "#ev-property" },
+    { key: "evOwnsCharger", selector: "#ev-owns-charger" },
+    { key: "evInstallLocation", selector: "#ev-install-location" },
+    { key: "lightingSetting", selector: "#lighting-setting" },
+    { key: "lightingFixtureCount", selector: "#lighting-fixture-count" },
+    { key: "lightingInstallType", selector: "#lighting-install-type" },
+    { key: "generatorType", selector: "#generator-type" },
+    { key: "generatorPropertyType", selector: "#generator-property" },
+    { key: "description", selector: "#description" },
+    // Server field mapping for details.*
+    { key: "details.startedWhen", selector: "#trouble-started" },
+    { key: "details.reason", selector: "#panel-reason" },
+    {
+      key: "details.propertyType",
+      selector: "#panel-property, #ev-property, #generator-property",
+    },
+    { key: "details.ownsCharger", selector: "#ev-owns-charger" },
+    { key: "details.installLocation", selector: "#ev-install-location" },
+    { key: "details.setting", selector: "#lighting-setting" },
+    { key: "details.fixtureCount", selector: "#lighting-fixture-count" },
+    { key: "details.installType", selector: "#lighting-install-type" },
+    { key: "details.generatorType", selector: "#generator-type" },
+    // Step 3
+    { key: "name", selector: "#contact-name" },
+    { key: "phone", selector: "#contact-phone" },
+    { key: "email", selector: "#contact-email" },
+    { key: "zip", selector: "#contact-zip" },
+    { key: "consent", selector: "#consent" },
+  ];
+
+  for (const field of fieldOrder) {
+    if (errorObj[field.key]) {
+      const el = document.querySelector<HTMLElement>(field.selector);
+      if (el) {
+        el.focus();
+        return;
+      }
+    }
+  }
+
+  const fallback = document.querySelector<HTMLElement>(
+    '[aria-invalid="true"], :invalid, [role="radiogroup"][aria-invalid="true"] input',
+  );
+  if (fallback) {
+    fallback.focus();
+  }
+}
+
 export function EstimateForm() {
   const searchParams = useSearchParams();
   const initialService = searchParams.get("service") || "";
@@ -70,6 +127,8 @@ export function EstimateForm() {
   const formStartedAtRef = useRef<number>(0);
   const hasTrackedStartRef = useRef<boolean>(false);
   const formContainerRef = useRef<HTMLDivElement>(null);
+  const isFirstMountRef = useRef(true);
+  const pendingErrorFocusRef = useRef<FieldErrors | null>(null);
 
   // Initialize idempotency key and mount timestamp
   useEffect(() => {
@@ -112,13 +171,42 @@ export function EstimateForm() {
     });
   };
 
-  const scrollToTop = () => {
-    if (formContainerRef.current) {
-      formContainerRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  // Focus the new step heading on currentStep changes (not synchronously after setState)
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      return;
+    }
+    if (pendingErrorFocusRef.current) {
+      focusFirstInvalid(pendingErrorFocusRef.current);
+      pendingErrorFocusRef.current = null;
+      return;
     }
     const heading = document.getElementById("step-heading");
     if (heading) {
       heading.focus();
+    }
+  }, [currentStep]);
+
+  // Focus confirmation panel heading after submit
+  useEffect(() => {
+    if (submissionResult) {
+      const confirmHeading = document.getElementById("confirmation-heading");
+      if (confirmHeading) {
+        confirmHeading.focus();
+      }
+    }
+  }, [submissionResult]);
+
+  const scrollToTop = () => {
+    if (formContainerRef.current) {
+      const prefersReducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      formContainerRef.current.scrollIntoView({
+        behavior: prefersReducedMotion ? "auto" : "smooth",
+        block: "start",
+      });
     }
   };
 
@@ -136,7 +224,11 @@ export function EstimateForm() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstInvalid(newErrors);
+      return false;
+    }
+    return true;
   };
 
   // Step 2 Validation
@@ -174,7 +266,11 @@ export function EstimateForm() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstInvalid(newErrors);
+      return false;
+    }
+    return true;
   };
 
   // Step 3 Validation
@@ -207,7 +303,11 @@ export function EstimateForm() {
     }
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (Object.keys(newErrors).length > 0) {
+      focusFirstInvalid(newErrors);
+      return false;
+    }
+    return true;
   };
 
   const handleNextFromStep1 = () => {
@@ -364,7 +464,12 @@ export function EstimateForm() {
         }
 
         setErrors(serverErrors);
-        setCurrentStep(targetStep);
+        if (targetStep === currentStep) {
+          focusFirstInvalid(serverErrors);
+        } else {
+          pendingErrorFocusRef.current = serverErrors;
+          setCurrentStep(targetStep);
+        }
         setSubmitError("Please review the highlighted fields and correct any errors.");
         scrollToTop();
       } else if (response.status === 429) {

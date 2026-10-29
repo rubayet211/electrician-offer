@@ -27,19 +27,19 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
   const urgencyOptions = [
     {
       value: "routine",
-      label: "Routine",
+      label: "Routine (no rush)",
       description: "Standard scheduling; flexible timing.",
       icon: <Calendar className="w-4 h-4 text-steel-600" />,
     },
     {
       value: "soon",
-      label: "Within a few days",
+      label: "Soon (within the next few days)",
       description: "Needs attention this week.",
       icon: <Clock className="w-4 h-4 text-amber-strong" />,
     },
     {
       value: "urgent",
-      label: "Urgent (not emergency)",
+      label: "Urgent (I would like it looked at within 24 hours; not an emergency)",
       description: "Needs evaluation within 24 hours.",
       icon: <AlertTriangle className="w-4 h-4 text-danger" />,
     },
@@ -50,7 +50,8 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
       <div>
         <h2
           id="step-heading"
-          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight"
+          tabIndex={-1}
+          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight outline-none"
         >
           What do you need help with?
         </h2>
@@ -61,8 +62,15 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
 
       {/* Services Grid */}
       <div className="space-y-3">
-        <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-steel-700">
-          Select an electrical service <span className="text-danger">*</span>
+        <label
+          id="service-group-label"
+          className="block text-xs font-mono font-semibold uppercase tracking-wider text-steel-700"
+        >
+          Select an electrical service{" "}
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
+          <span className="sr-only">(required)</span>
         </label>
 
         <RadioCards
@@ -72,6 +80,8 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
           value={formState.serviceSlug}
           onChange={(e) => onChange({ serviceSlug: e.target.value })}
           hasError={!!errors.serviceSlug}
+          aria-labelledby="service-group-label"
+          aria-required="true"
           aria-describedby={errors.serviceSlug ? "serviceSlug-error" : undefined}
         />
 
@@ -80,8 +90,15 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
 
       {/* Urgency */}
       <div className="space-y-3 pt-4 border-t border-steel-200">
-        <label className="block text-xs font-mono font-semibold uppercase tracking-wider text-steel-700">
-          Timeline & Urgency <span className="text-danger">*</span>
+        <label
+          id="urgency-group-label"
+          className="block text-xs font-mono font-semibold uppercase tracking-wider text-steel-700"
+        >
+          Timeline & Urgency{" "}
+          <span className="text-danger" aria-hidden="true">
+            *
+          </span>
+          <span className="sr-only">(required)</span>
         </label>
 
         <RadioCards
@@ -91,6 +108,8 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
           value={formState.urgency}
           onChange={(e) => onChange({ urgency: e.target.value as UrgencyType })}
           hasError={!!errors.urgency}
+          aria-labelledby="urgency-group-label"
+          aria-required="true"
           aria-describedby={errors.urgency ? "urgency-error" : undefined}
         />
 

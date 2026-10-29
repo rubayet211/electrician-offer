@@ -11,28 +11,24 @@ export interface ConfirmationPanelProps {
 }
 
 export function ConfirmationPanel({ result, onReset }: ConfirmationPanelProps) {
-  const { business } = parsedClientConfig;
+  const { business, positioning } = parsedClientConfig;
   const isDemo = result.notification === "demo";
 
-  const nextSteps = [
-    {
-      step: 1,
-      title: "Team review",
-      description: `An electrician from ${business.name} reviews your project scope and property details.`,
-    },
-    {
-      step: 2,
-      title: "Direct confirmation call",
-      description:
-        "We will call you to discuss specific equipment needs, site access, and arrange an on-site visit.",
-    },
-    {
-      step: 3,
-      title: "Written estimate",
-      description:
-        "You receive a clear written proposal before any physical electrical work begins.",
-    },
+  const defaultSteps = [
+    `${business.name} reviews your request.`,
+    `${business.name} contacts you using the details you provided.`,
+    "We provide a clear written estimate before any work begins.",
   ];
+  const configuredSteps =
+    positioning?.nextSteps && positioning.nextSteps.length > 0
+      ? positioning.nextSteps
+      : defaultSteps;
+
+  const nextSteps = configuredSteps.map((stepText, idx) => ({
+    step: idx + 1,
+    title: `Step ${idx + 1}`,
+    description: stepText,
+  }));
 
   return (
     <div className="space-y-8 animate-fade-in" role="status" aria-live="polite">
@@ -44,7 +40,11 @@ export function ConfirmationPanel({ result, onReset }: ConfirmationPanelProps) {
           </div>
 
           <div className="space-y-1">
-            <h2 className="font-display text-2xl font-bold text-ink tracking-tight">
+            <h2
+              id="confirmation-heading"
+              tabIndex={-1}
+              className="font-display text-2xl font-bold text-ink tracking-tight outline-none"
+            >
               {result.duplicate ? "Duplicate Request Identified" : "Request Received"}
             </h2>
             <p className="text-steel-600 text-sm leading-relaxed">

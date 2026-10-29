@@ -23,10 +23,25 @@ export default function AboutPage() {
   const demo = isDemo();
   const electricianSchema = buildElectricianSchema();
 
-  // Filter licenses to display: verified licenses, or sample licenses in demo mode
-  const displayLicenses = credentials.licenses.filter(
-    (l) => l.status === "verified" || (demo && l.isSample),
+  // Filter licenses to display: verified non-sample licenses, or sample licenses in demo mode
+  const displayLicenses = credentials.licenses.filter((l) =>
+    demo ? l.isSample : l.status === "verified" && !l.isSample,
   );
+
+  const hasVerifiedLicenses = displayLicenses.length > 0;
+  const showInsurance = demo
+    ? Boolean(credentials.insurance.isSample && credentials.insurance.carrier)
+    : Boolean(
+        credentials.insurance.status === "verified" &&
+        !credentials.insurance.isSample &&
+        credentials.insurance.carrier,
+      );
+
+  const hasVerifiedCredentials =
+    hasVerifiedLicenses ||
+    (credentials.insurance.status === "verified" &&
+      !credentials.insurance.isSample &&
+      Boolean(credentials.insurance.carrier));
 
   const licenseSpecItems = displayLicenses.map((lic) => ({
     label: lic.label,
@@ -48,33 +63,36 @@ export default function AboutPage() {
   }));
 
   const insuranceSpecItems = [
-    {
-      label: "General Commercial Liability Insurance",
-      value: (
-        <div className="flex items-center gap-2">
-          <span>{credentials.insurance.carrier || "Active Commercial Policy"}</span>
-          {credentials.insurance.isSample || demo ? (
-            <Badge variant="sample">SAMPLE</Badge>
-          ) : credentials.insurance.status === "verified" ? (
-            <Badge variant="verified">Verified</Badge>
-          ) : (
-            <Badge variant="neutral">Pending Verification</Badge>
-          )}
-        </div>
-      ),
-      note:
-        credentials.insurance.coverage || "Property damage and bodily injury liability coverage",
-    },
-    ...(credentials.bonded !== undefined
+    ...(showInsurance
+      ? [
+          {
+            label: "General Commercial Liability Insurance",
+            value: (
+              <div className="flex items-center gap-2">
+                <span>{credentials.insurance.carrier}</span>
+                {credentials.insurance.isSample || demo ? (
+                  <Badge variant="sample">SAMPLE</Badge>
+                ) : (
+                  <Badge variant="verified">Verified</Badge>
+                )}
+              </div>
+            ),
+            note: credentials.insurance.coverage,
+          },
+        ]
+      : []),
+    ...((demo || hasVerifiedCredentials) && credentials.bonded !== undefined
       ? [
           {
             label: "Surety Bond",
             value: credentials.bonded ? "Bonded" : "Not Required",
-            note: "State and municipal contractor bonding compliance",
+            note: "Surety bond on file",
           },
         ]
       : []),
   ];
+
+  const hasCredentials = licenseSpecItems.length > 0 || insuranceSpecItems.length > 0;
 
   const concretePractices =
     parsedClientConfig.practices && parsedClientConfig.practices.length > 0
@@ -187,7 +205,11 @@ export default function AboutPage() {
                   <div className="flex justify-between py-1 border-b border-steel-100">
                     <span className="text-steel-600">Status:</span>
                     <span className="font-semibold text-[#15803D]">
-                      {demo ? "Active Demo Profile" : "Licensed & Active"}
+                      {demo
+                        ? "Active Demo Profile"
+                        : hasVerifiedCredentials
+                          ? "Verified Contractor"
+                          : "Active"}
                     </span>
                   </div>
                 </div>
@@ -214,21 +236,39 @@ export default function AboutPage() {
             eyebrow="VERIFICATION"
             eyebrowIndex="02 —"
             title="Licensing & Insurance Specifications"
-            lede="Every active license and insurance certificate held by our contracting organization."
+            lede={
+              hasCredentials
+                ? "Verified license and insurance information for our contracting organization."
+                : "Ask us for our license and insurance details."
+            }
           />
 
           <div className="space-y-8">
-            <div>
-              <SpecList
-                title="ELECTRICAL CONTRACTOR LICENSES"
-                items={licenseSpecItems}
-                className="mb-6"
-              />
-            </div>
+            {hasCredentials ? (
+              <>
+                {licenseSpecItems.length > 0 && (
+                  <div>
+                    <SpecList
+                      title="ELECTRICAL CONTRACTOR LICENSES"
+                      items={licenseSpecItems}
+                      className="mb-6"
+                    />
+                  </div>
+                )}
 
-            <div>
-              <SpecList title="INSURANCE POLICIES & BONDING" items={insuranceSpecItems} />
-            </div>
+                {insuranceSpecItems.length > 0 && (
+                  <div>
+                    <SpecList title="INSURANCE POLICIES & BONDING" items={insuranceSpecItems} />
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="p-6 rounded-md bg-paper border border-steel-200">
+                <p className="text-steel-600 font-sans text-sm sm:text-base">
+                  Ask us for our license and insurance details.
+                </p>
+              </div>
+            )}
 
             {demo && (
               <Notice type="info" title="Sample Credentials Notice">

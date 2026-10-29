@@ -16,7 +16,17 @@ export function generateMetadata(): Metadata {
 }
 
 export default function ContactPage() {
-  const { business, hours, serviceAreas } = parsedClientConfig;
+  const { business, hours, serviceAreas, positioning } = parsedClientConfig;
+
+  const defaultSteps = [
+    `${business.name} reviews your request.`,
+    `${business.name} contacts you using the details you provided.`,
+    "We provide an itemized written estimate before physical work starts.",
+  ];
+  const nextSteps =
+    positioning?.nextSteps && positioning.nextSteps.length > 0
+      ? positioning.nextSteps
+      : defaultSteps;
 
   return (
     <>
@@ -141,20 +151,12 @@ export default function ContactPage() {
                 </span>
 
                 <ol className="space-y-2 text-xs font-sans text-steel-700 list-none p-0 m-0">
-                  <li className="flex items-start gap-2">
-                    <span className="font-mono font-bold text-ink shrink-0">1.</span>
-                    <span>An electrician reviews your submitted project scope.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-mono font-bold text-ink shrink-0">2.</span>
-                    <span>We call you to confirm technical details and scheduling.</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="font-mono font-bold text-ink shrink-0">3.</span>
-                    <span>
-                      You receive an itemized written estimate before physical work starts.
-                    </span>
-                  </li>
+                  {nextSteps.map((step, idx) => (
+                    <li key={idx} className="flex items-start gap-2">
+                      <span className="font-mono font-bold text-ink shrink-0">{idx + 1}.</span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
                 </ol>
               </Card>
             </div>

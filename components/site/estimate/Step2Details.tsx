@@ -109,7 +109,8 @@ export function Step2Details({
       <div>
         <h2
           id="step-heading"
-          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight"
+          tabIndex={-1}
+          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight outline-none"
         >
           A few details
         </h2>

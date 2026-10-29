@@ -56,8 +56,8 @@ export default function HomePage() {
   // Verified reviews only (omit section if none)
   const verifiedReviews = (reviews || []).filter((r) => r.verified);
 
-  // How it works steps - concrete, non-promising
-  const workflowSteps = [
+  // How it works steps - config-driven or neutral defaults (no promised calls, visits or timeframes)
+  const defaultWorkflowSteps = [
     {
       step: 1,
       title: "Submit project request",
@@ -66,15 +66,13 @@ export default function HomePage() {
     },
     {
       step: 2,
-      title: "Scope review & follow-up",
-      description:
-        "We review your electrical load, property specifications, and details, then call you to confirm any site specifics.",
+      title: "Scope review",
+      description: `${business.name} reviews your request.`,
     },
     {
       step: 3,
-      title: "On-site assessment",
-      description:
-        "We inspect the panel, wiring pathways, and workspace in person to measure exact requirements.",
+      title: "Follow-up",
+      description: `${business.name} contacts you using the details you provided.`,
     },
     {
       step: 4,
@@ -84,31 +82,16 @@ export default function HomePage() {
     },
   ];
 
-  // FAQs: fallback to service FAQs if global faqs array is empty
-  const displayFaqs =
-    faqs.length > 0
-      ? faqs
-      : [
-          {
-            question: "How does the estimate process work?",
-            answer:
-              "You submit a service request with details about your project or symptoms. We review your property specifications, call to confirm details, and schedule an on-site visit to provide a detailed written proposal before work starts.",
-          },
-          {
-            question: "Do I need to know my electrical panel size before contacting you?",
-            answer:
-              "No. You only need to share specifications if you already have them. Never open an electrical panel or touch wiring to look for specifications.",
-          },
-          {
-            question: "Are your electricians licensed and insured?",
-            answer:
-              "Yes. We hold valid electrical contractor licensing and active liability insurance in our jurisdiction. License details can be reviewed on our About page.",
-          },
-          {
-            question: "What areas do you serve?",
-            answer: `We provide electrical service throughout ${serviceAreas.map((a) => a.name).join(", ")}, and surrounding communities.`,
-          },
-        ];
+  const workflowSteps =
+    positioning?.nextSteps && positioning.nextSteps.length > 0
+      ? positioning.nextSteps.map((stepText, idx) => ({
+          step: idx + 1,
+          title: `Step ${idx + 1}`,
+          description: stepText,
+        }))
+      : defaultWorkflowSteps;
+
+  const displayFaqs = faqs || [];
 
   const serviceAreaLine = `Serving ${serviceAreas.map((a) => a.name).join(", ")} and surrounding communities.`;
 
@@ -473,25 +456,27 @@ export default function HomePage() {
       )}
 
       {/* FAQs Section */}
-      <Section tone="light" borderBottom={true}>
-        <Container size="narrow">
-          <SectionHeading
-            eyebrow="QUESTIONS"
-            eyebrowIndex="05 —"
-            title="Frequently Asked Questions"
-            lede="Clear answers to common questions about electrical scopes, estimates, and safety."
-          />
+      {displayFaqs.length > 0 && (
+        <Section tone="light" borderBottom={true}>
+          <Container size="narrow">
+            <SectionHeading
+              eyebrow="QUESTIONS"
+              eyebrowIndex="05 —"
+              title="Frequently Asked Questions"
+              lede="Clear answers to common questions about electrical scopes, estimates, and safety."
+            />
 
-          <Accordion
-            items={displayFaqs.map((faq, i) => ({
-              id: `faq-${i}`,
-              title: faq.question,
-              content: faq.answer,
-              defaultOpen: i === 0,
-            }))}
-          />
-        </Container>
-      </Section>
+            <Accordion
+              items={displayFaqs.map((faq, i) => ({
+                id: `faq-${i}`,
+                title: faq.question,
+                content: faq.answer,
+                defaultOpen: i === 0,
+              }))}
+            />
+          </Container>
+        </Section>
+      )}
 
       {/* Safety Notice Callout */}
       <Section tone="muted" borderBottom={true} className="py-10">
@@ -515,8 +500,8 @@ export default function HomePage() {
           </h2>
 
           <p className="text-steel-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-sans">
-            Submit your project details online in minutes or speak directly with our team during
-            standard business hours.
+            Submit your project details online in minutes or contact us directly using the details
+            below.
           </p>
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">

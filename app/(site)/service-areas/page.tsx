@@ -32,8 +32,8 @@ export default function ServiceAreasPage() {
               Service Areas & Coverage
             </h1>
             <p className="text-base sm:text-lg text-steel-300 leading-relaxed font-sans">
-              We provide licensed residential and commercial electrical contracting services
-              throughout the following communities and surrounding areas.
+              Electrical services provided throughout the following communities and surrounding
+              areas.
             </p>
           </div>
         </Container>
@@ -46,7 +46,7 @@ export default function ServiceAreasPage() {
             eyebrow="COVERAGE MAP"
             eyebrowIndex="01 —"
             title="Communities We Regularly Serve"
-            lede="Our mobile service trucks and licensed electricians operate throughout these key municipalities."
+            lede="Review local service coverage and municipal boundaries for our service areas."
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -67,9 +67,6 @@ export default function ServiceAreasPage() {
                       {area.name}
                     </h2>
                   </div>
-                  <span className="font-mono text-xs font-semibold px-2 py-0.5 rounded-sm bg-green-50 text-[#15803D] border border-green-200">
-                    Active Service
-                  </span>
                 </div>
 
                 <p className="text-sm text-steel-600 leading-relaxed font-sans">
@@ -104,8 +101,8 @@ export default function ServiceAreasPage() {
                 Not sure if your address is covered?
               </h3>
               <p className="text-sm text-steel-600 leading-relaxed font-sans">
-                Call our office or enter your 5-digit ZIP code when requesting an estimate online.
-                We frequently accommodate neighboring areas for scheduled projects.
+                Not sure if your address is covered? Call or include your ZIP in the estimate
+                request.
               </p>
             </div>
 

@@ -13,9 +13,14 @@ const STEP_LABELS = {
 export function StepIndicator({ currentStep }: StepIndicatorProps) {
   return (
     <div className="mb-8" aria-label={`Step ${currentStep} of 3: ${STEP_LABELS[currentStep]}`}>
+      {/* Perceivable live announcement for assistive tech */}
+      <div aria-live="polite" aria-atomic="true" className="sr-only">
+        Step {currentStep} of 3: {STEP_LABELS[currentStep]}
+      </div>
+
       <div className="flex items-center justify-between text-xs font-mono mb-2.5">
         <span className="font-semibold text-steel-700 [data-tone=dark]_&:text-steel-300">
-          STEP {currentStep} OF 3
+          Step {currentStep} of 3
         </span>
         <span className="text-steel-500 uppercase tracking-wider">{STEP_LABELS[currentStep]}</span>
       </div>

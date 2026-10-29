@@ -63,13 +63,12 @@ export default function PrivacyPage() {
                 </li>
                 <li>
                   <strong>Optional Photographs:</strong> Project photos you choose to upload.
-                  Uploaded images are stripped of GPS and EXIF metadata on your device prior to
-                  transmission.
+                  EXIF/GPS stripping happens in the visitor&apos;s browser before upload.
                 </li>
                 <li>
-                  <strong>Abuse Prevention Data:</strong> A cryptographic hash (HMAC) of your IP
-                  address used solely for rate limiting and spam prevention. Your raw IP address is
-                  not permanently logged.
+                  <strong>Abuse Prevention Data:</strong> An HMAC hash of the IP address is stored
+                  with each request and with assistant sessions to prevent abuse. Assistant session
+                  records are deleted after 60 days.
                 </li>
                 <li>
                   <strong>Non-PII Interaction Metrics:</strong> Aggregated, non-personal click
@@ -97,9 +96,8 @@ export default function PrivacyPage() {
                 3. Data Retention & Deletion
               </h2>
               <p>
-                Inquiry contact records are maintained for contractor communication and warranty
-                records. Project photograph attachments are automatically purged from our servers
-                after <strong>{uploads.retentionDays} days</strong>.
+                Estimate requests are kept until the business deletes them or on request. Photos are
+                deleted after <strong>{uploads.retentionDays} days</strong>.
               </p>
               <p>To request the deletion of your inquiry details, contact us directly at:</p>
               <div className="p-4 rounded-md bg-steel-50 border border-steel-200 font-mono text-sm text-ink flex items-center gap-2">
@@ -115,9 +113,9 @@ export default function PrivacyPage() {
                 4. Third-Party Service Providers
               </h2>
               <p>
-                We utilize trusted operational infrastructure providers, including email dispatch
-                services and secure hosting environments, solely to operate our communication
-                pipeline. All providers are bound by strict data confidentiality agreements.
+                We utilize service providers for hosting, database, email delivery provider, and
+                OpenRouter for the AI assistant with zero-data-retention routing; transcripts are
+                not stored.
               </p>
             </section>
           </div>

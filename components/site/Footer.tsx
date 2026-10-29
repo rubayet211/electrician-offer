@@ -42,7 +42,7 @@ export function Footer() {
                 <Phone className="w-4 h-4 text-amber shrink-0" aria-hidden="true" />
                 <CallLink
                   phone={business.phone}
-                  className="font-mono hover:text-paper transition-colors duration-150"
+                  className="font-mono hover:text-paper transition-colors duration-150 inline-flex items-center min-h-[44px]"
                 >
                   {business.phoneDisplay}
                 </CallLink>
@@ -52,7 +52,7 @@ export function Footer() {
                 <Mail className="w-4 h-4 text-steel-400 shrink-0" aria-hidden="true" />
                 <a
                   href={`mailto:${business.email}`}
-                  className="font-mono text-xs hover:text-paper transition-colors duration-150"
+                  className="font-mono text-xs hover:text-paper transition-colors duration-150 inline-flex items-center min-h-[44px]"
                 >
                   {business.email}
                 </a>
@@ -82,7 +82,7 @@ export function Footer() {
                   <li key={service.slug}>
                     <Link
                       href={`/services/${service.slug}`}
-                      className="text-steel-300 hover:text-paper hover:underline transition-colors duration-150 text-sm"
+                      className="text-steel-300 hover:text-paper hover:underline transition-colors duration-150 text-sm inline-flex items-center min-h-[44px]"
                     >
                       {service.title}
                     </Link>
@@ -91,7 +91,7 @@ export function Footer() {
               <li>
                 <Link
                   href="/services"
-                  className="text-amber hover:text-amber-strong text-xs font-semibold inline-flex items-center gap-1 mt-1"
+                  className="text-amber hover:text-amber-strong text-xs font-semibold inline-flex items-center min-h-[44px] gap-1 mt-1"
                 >
                   View all services →
                 </Link>
@@ -114,7 +114,7 @@ export function Footer() {
               </ul>
               <Link
                 href="/service-areas"
-                className="text-amber hover:text-amber-strong text-xs font-semibold inline-flex items-center gap-1 mt-2"
+                className="text-amber hover:text-amber-strong text-xs font-semibold inline-flex items-center min-h-[44px] gap-1 mt-2"
               >
                 All service areas →
               </Link>
@@ -180,10 +180,16 @@ export function Footer() {
           </div>
 
           <div className="flex items-center gap-6">
-            <Link href="/privacy" className="hover:text-paper transition-colors duration-150">
+            <Link
+              href="/privacy"
+              className="hover:text-paper transition-colors duration-150 inline-flex items-center min-h-[44px]"
+            >
               Privacy Policy
             </Link>
-            <Link href="/terms" className="hover:text-paper transition-colors duration-150">
+            <Link
+              href="/terms"
+              className="hover:text-paper transition-colors duration-150 inline-flex items-center min-h-[44px]"
+            >
               Terms of Service
             </Link>
             <span className="text-steel-600" aria-hidden="true">

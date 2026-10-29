@@ -30,7 +30,8 @@ export function Step3Contact({
       <div>
         <h2
           id="step-heading"
-          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight"
+          tabIndex={-1}
+          className="font-display text-xl sm:text-2xl font-bold text-ink mb-1.5 tracking-tight outline-none"
         >
           How can we reach you?
         </h2>
@@ -140,6 +141,8 @@ export function Step3Contact({
         <div className="pt-2">
           <Checkbox
             id="consent"
+            className="[&_input]:!w-6 [&_input]:!h-6 [&_input]:!min-w-[24px] [&_input]:!min-h-[24px]"
+            style={{ width: "24px", height: "24px", minWidth: "24px", minHeight: "24px" }}
             checked={formState.consent}
             onChange={(e) => onChange({ consent: e.target.checked })}
             hasError={!!errors.consent}

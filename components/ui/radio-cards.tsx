@@ -17,6 +17,9 @@ export interface RadioCardsProps {
   hasError?: boolean;
   "aria-invalid"?: boolean | "true" | "false";
   "aria-describedby"?: string;
+  "aria-labelledby"?: string;
+  "aria-label"?: string;
+  "aria-required"?: boolean | "true" | "false";
   className?: string;
   columns?: 1 | 2 | 3;
 }
@@ -30,10 +33,14 @@ export function RadioCards({
   hasError,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
+  "aria-labelledby": ariaLabelledBy,
+  "aria-label": ariaLabel,
+  "aria-required": ariaRequired,
   className = "",
   columns = 2,
 }: RadioCardsProps) {
   const isInvalid = ariaInvalid === true || ariaInvalid === "true" || hasError;
+  const isRequired = ariaRequired === true || ariaRequired === "true";
 
   const colClasses = {
     1: "grid-cols-1",
@@ -44,6 +51,9 @@ export function RadioCards({
   return (
     <div
       role="radiogroup"
+      aria-labelledby={ariaLabelledBy}
+      aria-label={ariaLabel}
+      aria-required={isRequired ? "true" : undefined}
       aria-invalid={isInvalid ? "true" : undefined}
       aria-describedby={ariaDescribedBy}
       className={`grid gap-3 ${colClasses[columns]} ${className}`.trim()}
@@ -70,6 +80,7 @@ export function RadioCards({
               checked={isChecked}
               defaultChecked={defaultValue === option.value}
               onChange={onChange}
+              required={isRequired}
               className="mt-1 w-4 h-4 text-ink accent-ink [data-tone=dark]_&:accent-amber border-steel-300 focus-visible:outline-2 focus-visible:outline-signal-blue"
             />
 
