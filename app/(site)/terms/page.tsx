@@ -77,12 +77,13 @@ export default function TermsPage() {
 
             <section className="space-y-3">
               <h2 className="font-display text-xl font-bold text-ink tracking-tight">
-                3. Permitting & Code Compliance
+                3. Permits and Regulatory Scope
               </h2>
               <p>
-                All work performed by {business.name} conforms to the National Electrical Code (NEC)
-                and applicable local jurisdiction amendments. Where required by municipal law,
-                permits will be acquired and formal inspections scheduled.
+                Permit requirements, utility approvals, and applicable municipal regulations vary by
+                jurisdiction and project scope. Specific permit responsibilities, fees, and
+                inspection requirements will be identified in each written contract proposal prior
+                to physical work.
               </p>
             </section>
 

@@ -21,7 +21,14 @@ export const clientConfigSchema = z.object({
     phone: text,
     phoneDisplay: text,
     email: text,
-    timezone: text,
+    timezone: text.refine((value) => {
+      try {
+        new Intl.DateTimeFormat("en-US", { timeZone: value });
+        return true;
+      } catch {
+        return false;
+      }
+    }, "Invalid time zone"),
     address: z.object({
       street: text.optional(),
       city: text,
@@ -32,6 +39,17 @@ export const clientConfigSchema = z.object({
     yearsInBusiness: z.number().optional(),
     ownerName: text.optional(),
   }),
+  positioning: z
+    .object({
+      heroHeadline: text.default("Electrical Work Done Right. A Clear Way to Get Started."),
+      heroSubhead: text.optional(),
+      tagline: text.optional(),
+      closingHeadline: text.optional(),
+    })
+    .default({
+      heroHeadline: "Electrical Work Done Right. A Clear Way to Get Started.",
+    }),
+  practices: z.array(z.object({ title: text, description: text })).default([]),
   hours: z.array(z.object({ days: text, open: text, close: text })),
   emergency: z.object({
     offered: z.boolean(),
@@ -103,7 +121,7 @@ export const clientConfigSchema = z.object({
   ),
   faqs: z.array(faq),
   branding: z.object({ logo: text.optional(), primary: text, accent: text }),
-  notifications: z.object({ recipients: z.array(text), fromAddress: text }),
+  notifications: z.object({ recipients: z.array(z.email()).min(1), fromAddress: text }),
   seo: z.object({
     titleTemplate: text,
     defaultDescription: text,

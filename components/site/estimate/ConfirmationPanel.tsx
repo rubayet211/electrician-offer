@@ -18,19 +18,19 @@ export function ConfirmationPanel({ result, onReset }: ConfirmationPanelProps) {
     {
       step: 1,
       title: "Team review",
-      description: `A licensed electrician from ${business.name} reviews your project scope and property details.`,
+      description: `An electrician from ${business.name} reviews your project scope and property details.`,
     },
     {
       step: 2,
       title: "Direct confirmation call",
       description:
-        "We will call you to discuss specific equipment needs, site access, and schedule an on-site visit.",
+        "We will call you to discuss specific equipment needs, site access, and arrange an on-site visit.",
     },
     {
       step: 3,
       title: "Written estimate",
       description:
-        "You receive a clear, upfront written proposal before any physical electrical work begins.",
+        "You receive a clear written proposal before any physical electrical work begins.",
     },
   ];
 

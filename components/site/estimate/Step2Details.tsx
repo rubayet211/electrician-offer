@@ -544,15 +544,27 @@ export function Step2Details({
       </div>
 
       {/* Navigation Buttons */}
-      <div className="pt-4 flex items-center justify-between gap-4">
-        <Button type="button" variant="outline" size="md" onClick={onBack}>
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          className="w-full sm:w-auto"
+          onClick={onBack}
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Back</span>
         </Button>
 
-        <Button type="button" variant="primary" size="lg" onClick={onNext}>
+        <Button
+          type="button"
+          variant="primary"
+          size="md"
+          className="w-full sm:w-auto sm:min-h-[48px] sm:px-6 sm:text-base"
+          onClick={onNext}
+        >
           <span>Continue to contact</span>
-          <ArrowRight className="w-4 h-4" aria-hidden="true" />
+          <ArrowRight className="w-4 h-4 shrink-0" aria-hidden="true" />
         </Button>
       </div>
     </div>

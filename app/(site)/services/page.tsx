@@ -62,14 +62,14 @@ export default function ServicesPage() {
     {
       title: "Safety Assessments & Inspections",
       description:
-        "Comprehensive panel reviews, pre-purchase assessments, and code compliance checks.",
+        "Comprehensive panel reviews, pre-purchase evaluations, and system condition assessments.",
       items: safetyServices,
     },
     ...(otherServices.length > 0
       ? [
           {
             title: "Additional Services",
-            description: "Specialized electrical services provided by our licensed team.",
+            description: "Specialized electrical services provided by our team.",
             items: otherServices,
           },
         ]
@@ -83,14 +83,13 @@ export default function ServicesPage() {
         <Container>
           <div className="max-w-3xl space-y-4">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-sm bg-steel-900 border border-steel-700 text-xs font-mono text-amber">
-              <span>SPECIALIZED CONTRACTOR SCOPES</span>
+              <span>ELECTRICAL SERVICE DIRECTORY</span>
             </div>
             <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-paper tracking-tight">
               Electrical Services & Solutions
             </h1>
             <p className="text-base sm:text-lg text-steel-300 leading-relaxed font-sans">
-              Every project is installed to National Electrical Code (NEC) standards with dedicated
-              permitting and upfront written estimates.
+              Explore our offered electrical installations, updates, and diagnostic repair services.
             </p>
           </div>
         </Container>
@@ -178,11 +177,11 @@ export default function ServicesPage() {
       <Section tone="dark" blueprint={true} className="py-14">
         <Container size="narrow" className="text-center space-y-6">
           <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-paper tracking-tight">
-            Have Questions About Your System?
+            {parsedClientConfig.positioning?.closingHeadline ||
+              "Have an electrical project in mind?"}
           </h2>
           <p className="text-steel-300 text-sm sm:text-base max-w-xl mx-auto font-sans leading-relaxed">
-            Speak directly with a licensed electrician or submit a request online with project
-            details and photos.
+            Speak directly with our team or submit a request online with project details and photos.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">

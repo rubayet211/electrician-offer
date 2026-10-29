@@ -21,11 +21,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
       {showDemoBanner && <DemoBanner />}
       <Header />
 
-      <main
-        id="main-content"
-        tabIndex={-1}
-        className="flex-1 pb-28 md:pb-0 focus:outline-none"
-      >
+      <main id="main-content" tabIndex={-1} className="flex-1 pb-28 md:pb-0 focus:outline-none">
         {children}
       </main>
 

@@ -161,9 +161,7 @@ export function Footer() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-steel-400">
-                Licensed and insured electrical contracting services.
-              </p>
+              <p className="text-xs text-steel-400">Residential electrical services.</p>
             )}
 
             <div className="pt-2 text-xs text-steel-400">

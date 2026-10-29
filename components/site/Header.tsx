@@ -67,9 +67,11 @@ export function Header() {
               <span className="font-display font-bold text-base sm:text-lg tracking-tight text-paper group-hover:text-amber transition-colors duration-150">
                 {business.name}
               </span>
-              <span className="font-mono text-[10px] uppercase tracking-widest text-steel-400">
-                Licensed Electrical Contractor
-              </span>
+              {parsedClientConfig.positioning?.tagline && (
+                <span className="font-mono text-[10px] uppercase tracking-widest text-steel-400">
+                  {parsedClientConfig.positioning.tagline}
+                </span>
+              )}
             </div>
           </Link>
 

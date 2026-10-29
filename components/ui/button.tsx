@@ -40,19 +40,21 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const baseClasses =
-    "inline-flex items-center justify-center rounded-sm font-sans tracking-tight cursor-pointer select-none text-center transition-colors duration-150 ease-out disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-signal-blue focus-visible:outline-offset-2";
+    "inline-flex flex-row flex-nowrap items-center justify-center whitespace-nowrap rounded-sm font-sans tracking-tight cursor-pointer select-none text-center transition-colors duration-150 ease-out disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-signal-blue focus-visible:outline-offset-2";
   const combinedClasses =
     `${baseClasses} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`.trim();
 
   const content = (
-    <>
+    <span className="inline-flex flex-row flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
       {icon && (
         <span className="inline-flex shrink-0 items-center justify-center" aria-hidden="true">
           {icon}
         </span>
       )}
-      <span>{children}</span>
-    </>
+      <span className="inline-flex flex-row flex-nowrap items-center justify-center gap-2 whitespace-nowrap">
+        {children}
+      </span>
+    </span>
   );
 
   if (href) {

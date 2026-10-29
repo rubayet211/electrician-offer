@@ -160,19 +160,32 @@ export function Step3Contact({
       )}
 
       {/* Navigation Buttons */}
-      <div className="pt-4 flex items-center justify-between gap-4">
-        <Button type="button" variant="outline" size="md" onClick={onBack} disabled={isSubmitting}>
-          <ArrowLeft className="w-4 h-4" aria-hidden="true" />
+      <div className="pt-4 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <Button
+          type="button"
+          variant="outline"
+          size="md"
+          className="w-full sm:w-auto"
+          onClick={onBack}
+          disabled={isSubmitting}
+        >
+          <ArrowLeft className="w-4 h-4 shrink-0" aria-hidden="true" />
           <span>Back</span>
         </Button>
 
-        <Button type="submit" variant="primary" size="lg" disabled={isSubmitting}>
+        <Button
+          type="submit"
+          variant="primary"
+          size="md"
+          className="w-full sm:w-auto sm:min-h-[48px] sm:px-6 sm:text-base"
+          disabled={isSubmitting}
+        >
           {isSubmitting ? (
             <span>Sending…</span>
           ) : (
             <>
               <span>Send estimate request</span>
-              <Send className="w-4 h-4" aria-hidden="true" />
+              <Send className="w-4 h-4 shrink-0" aria-hidden="true" />
             </>
           )}
         </Button>

@@ -216,6 +216,34 @@ const demo = {
     timezone: "America/Chicago",
     address: { city: "Harbor Ridge", state: "Sample State", zip: "00000", showPublicly: false },
   },
+  positioning: {
+    heroHeadline: "Electrical Work Done Right. A Clear Way to Get Started.",
+    heroSubhead:
+      "Residential electrical repairs, panel updates, and equipment installations. Straightforward estimates and direct communication.",
+    tagline: "Residential Electrical Services",
+    closingHeadline: "Have an electrical project in mind?",
+  },
+  practices: [
+    {
+      title: "Written estimates before work starts",
+      description:
+        "We review your project requirements and provide a written estimate before any physical work begins.",
+    },
+    {
+      title: "Clear arrival windows confirmed by phone",
+      description: "We contact you in advance to confirm timing so you are not left waiting.",
+    },
+    {
+      title: "Photos optional — never open a panel",
+      description:
+        "If you have a clear photo of the room or label, send it along. Never open electrical equipment or approach exposed wiring.",
+    },
+    {
+      title: "We explain options in plain language",
+      description:
+        "We explain what needs attention and walk through your repair or installation options without technical jargon.",
+    },
+  ],
   hours: [{ days: "Monday - Friday", open: "8:00 AM", close: "5:00 PM" }],
   emergency: {
     offered: false,

@@ -10,7 +10,7 @@ import { EstimateForm } from "@/components/site/estimate/EstimateForm";
 export function generateMetadata(): Metadata {
   return {
     title: `Request an Estimate & Contact | ${parsedClientConfig.business.name}`,
-    description: `Submit an online electrical service estimate request or call ${parsedClientConfig.business.name}. Upfront pricing and licensed craftsmanship.`,
+    description: `Submit an online electrical service estimate request or call ${parsedClientConfig.business.name}. Written estimates and direct communication.`,
     alternates: {
       canonical: canonicalUrl("/contact"),
     },
@@ -34,8 +34,8 @@ export default function ContactPage() {
               Request an Estimate
             </h1>
             <p className="text-base sm:text-lg text-steel-300 leading-relaxed font-sans">
-              Provide project details below for an upfront estimate, or call our office directly for
-              immediate scheduling assistance.
+              Provide project details below for an estimate, or call our office directly to discuss
+              your project.
             </p>
           </div>
         </Container>
@@ -87,7 +87,7 @@ export default function ContactPage() {
                     {business.phoneDisplay}
                   </CallLink>
                   <p className="text-xs text-steel-300 font-sans leading-relaxed">
-                    Call to discuss urgent issues, request site visits, or confirm appointments.
+                    Call to discuss urgent issues, review project scopes, or ask questions.
                   </p>
                 </div>
 
@@ -130,8 +130,8 @@ export default function ContactPage() {
                 </div>
 
                 <p className="text-xs text-steel-600 leading-relaxed font-sans">
-                  We regularly dispatch to {serviceAreas.map((a) => a.name).join(", ")}. If your ZIP
-                  code is in a neighboring district, send your details and we will confirm
+                  Service areas include {serviceAreas.map((a) => a.name).join(", ")}. If your ZIP
+                  code is in a neighboring district, send your details and we will check
                   availability.
                 </p>
               </Card>

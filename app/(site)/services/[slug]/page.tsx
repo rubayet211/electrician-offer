@@ -5,7 +5,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, Phone, CheckCircle2 } from "lucide-react";
 import { parsedClientConfig } from "@/config/client.config";
-import { canonicalUrl, getService, offeredServices } from "@/lib/config/site";
+import { canonicalUrl, getService, offeredServices, isDemo } from "@/lib/config/site";
 import {
   Section,
   Container,
@@ -59,7 +59,12 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
     notFound();
   }
 
-  const { business, projects } = parsedClientConfig;
+  const { business, credentials, projects, practices } = parsedClientConfig;
+  const demo = isDemo();
+
+  const isFullyVerified =
+    credentials.licenses.some((l) => l.status === "verified") &&
+    credentials.insurance?.status === "verified";
 
   // Match corresponding project image if available
   const baseSlugKeyword = slug
@@ -125,9 +130,7 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
                   name={service.icon || service.title}
                   className="w-3.5 h-3.5 text-amber"
                 />
-                <span className="uppercase tracking-wider">
-                  CODE-COMPLIANT ELECTRICAL CONTRACTING
-                </span>
+                <span className="uppercase tracking-wider">ELECTRICAL SERVICE SCOPE</span>
               </div>
 
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-paper tracking-tight">
@@ -159,15 +162,24 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
                 </CallLink>
               </div>
 
-              <div className="pt-2 flex items-center gap-4 text-xs font-mono text-steel-400">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber" />
-                  <span>Licensed & Insured</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber" />
-                  <span>Upfront Written Estimates</span>
-                </div>
+              <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-mono text-steel-400">
+                {isFullyVerified ? (
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-[#15803D]" />
+                    <span>Licensed & Insured</span>
+                  </div>
+                ) : demo ? (
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="sample">SAMPLE</Badge>
+                    <span>Licensed & Insured</span>
+                  </div>
+                ) : null}
+                {practices && practices.length > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber" />
+                    <span>{practices[0].title}</span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -192,7 +204,9 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
                   </div>
                   <div className="p-3 bg-charcoal text-xs font-mono text-steel-400 flex items-center justify-between border-t border-white/10 mt-2">
                     <span>{service.title}</span>
-                    <span className="text-steel-500">SPECIFICATION DISCLOSURE</span>
+                    {matchingProject.isSample && (
+                      <span className="text-steel-500">Sample photo</span>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -204,8 +218,8 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
                     Work Scope & Technical Standard
                   </h3>
                   <p className="text-sm text-steel-300 font-sans leading-relaxed">
-                    All work is completed by certified journeymen and master electricians following
-                    jurisdictional codes and safety clearances.
+                    {service.shortDescription ||
+                      "Technical electrical installation and diagnostic service."}
                   </p>
                   <div className="pt-2 border-t border-white/10 text-xs font-mono text-steel-400">
                     SERVICE ID: {service.slug.toUpperCase()}
@@ -290,11 +304,10 @@ export default async function ServiceDetailPage({ params }: ServicePageProps) {
       <Section tone="dark" blueprint={true} className="py-14 sm:py-20">
         <Container size="narrow" className="text-center space-y-6">
           <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-paper tracking-tight">
-            Ready to Plan Your {service.title}?
+            Ready to Discuss Your {service.title}?
           </h2>
           <p className="text-steel-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-sans">
-            Request an upfront written estimate online, or call our office to discuss project timing
-            and scope.
+            Request an estimate online, or call our office to discuss project details and scope.
           </p>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-4">

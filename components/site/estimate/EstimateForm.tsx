@@ -413,7 +413,7 @@ export function EstimateForm() {
   return (
     <div
       ref={formContainerRef}
-      className="bg-paper border border-steel-200 rounded-md p-6 sm:p-8 shadow-technical"
+      className="bg-paper border border-steel-200 rounded-md p-4 sm:p-8 shadow-technical"
     >
       {submissionResult ? (
         <ConfirmationPanel result={submissionResult} onReset={handleReset} />

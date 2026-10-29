@@ -20,8 +20,9 @@ import { EstimateCtaLink } from "@/components/site/EstimateCtaLink";
 import { ServiceIcon } from "@/components/site/icons";
 
 export function generateMetadata(): Metadata {
+  const tagline = parsedClientConfig.positioning?.tagline;
   return {
-    title: `${parsedClientConfig.business.name} | Licensed Electrical Contractor`,
+    title: `${parsedClientConfig.business.name}${tagline ? ` | ${tagline}` : ""}`,
     description: parsedClientConfig.seo.defaultDescription,
     alternates: {
       canonical: canonicalUrl("/"),
@@ -30,7 +31,8 @@ export function generateMetadata(): Metadata {
 }
 
 export default function HomePage() {
-  const { business, credentials, serviceAreas, projects, faqs, reviews } = parsedClientConfig;
+  const { business, credentials, serviceAreas, projects, faqs, reviews, positioning, practices } =
+    parsedClientConfig;
   const services = offeredServices();
   const demo = isDemo();
 
@@ -74,7 +76,7 @@ export default function HomePage() {
       step: 4,
       title: "Clear written estimate",
       description:
-        "You receive an upfront written estimate detailing materials, labor, and permit requirements before work begins.",
+        "You receive a written estimate detailing scope and materials before work begins.",
     },
   ];
 
@@ -121,13 +123,14 @@ export default function HomePage() {
 
               {/* Main Headline */}
               <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-extrabold text-paper tracking-tight leading-[1.1]">
-                Electrical Work Done Right. A Clear Way to Get Started.
+                {positioning?.heroHeadline ||
+                  "Electrical Work Done Right. A Clear Way to Get Started."}
               </h1>
 
               {/* Intro Lede */}
               <p className="text-base sm:text-lg text-steel-300 leading-relaxed max-w-2xl font-sans">
-                Upfront estimates, licensed craftsmanship, and rigorous code compliance. From panel
-                upgrades and EV charger circuits to systematic diagnostic repairs.
+                {positioning?.heroSubhead ||
+                  "Residential electrical repairs, panel updates, and equipment installations. Straightforward estimates and direct communication."}
               </p>
 
               {/* CTAs */}
@@ -152,14 +155,18 @@ export default function HomePage() {
 
               {/* Trust Subtext */}
               <div className="pt-2 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs font-mono text-steel-400">
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber shrink-0" aria-hidden="true" />
-                  <span>Written estimate before work</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-amber shrink-0" aria-hidden="true" />
-                  <span>Permit & code compliant</span>
-                </div>
+                {(practices && practices.length > 0
+                  ? practices.slice(0, 2)
+                  : [
+                      { title: "Written estimates before work starts" },
+                      { title: "Photos optional — never open a panel" },
+                    ]
+                ).map((practice, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-amber shrink-0" aria-hidden="true" />
+                    <span>{practice.title}</span>
+                  </div>
+                ))}
                 {business.yearsInBusiness && (
                   <div className="flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-amber shrink-0" aria-hidden="true" />
@@ -190,7 +197,9 @@ export default function HomePage() {
                   </div>
                   <div className="p-3 bg-charcoal text-xs font-mono text-steel-400 flex items-center justify-between border-t border-white/10 mt-2">
                     <span>{heroProject.title}</span>
-                    <span className="text-steel-500">SPEC: VERIFIED INSTALLATION</span>
+                    {heroProject.isSample && (
+                      <span className="text-steel-500">Sample hero photo</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -254,19 +263,33 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-sm bg-paper border border-steel-300 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 text-amber-strong" aria-hidden="true" />
-              </div>
-              <div>
-                <div className="text-xs font-mono uppercase tracking-wider text-steel-500">
-                  Estimates
+            {practices && practices.length > 0 ? (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-sm bg-paper border border-steel-300 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5 text-amber-strong" aria-hidden="true" />
                 </div>
-                <div className="font-mono text-xs font-semibold text-ink">
-                  Written Upfront Scope
+                <div>
+                  <div className="text-xs font-mono uppercase tracking-wider text-steel-500">
+                    Practice
+                  </div>
+                  <div className="font-mono text-xs font-semibold text-ink">
+                    {practices[0].title}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-sm bg-paper border border-steel-300 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5 text-amber-strong" aria-hidden="true" />
+                </div>
+                <div>
+                  <div className="text-xs font-mono uppercase tracking-wider text-steel-500">
+                    Estimates
+                  </div>
+                  <div className="font-mono text-xs font-semibold text-ink">Written Estimates</div>
+                </div>
+              </div>
+            )}
           </div>
         </Container>
       </section>
@@ -367,8 +390,12 @@ export default function HomePage() {
                 <SectionHeading
                   eyebrow="EQUIPMENT & INSTALLATIONS"
                   eyebrowIndex="03 —"
-                  title="Completed Field Work"
-                  lede="Real equipment installations showcasing clean conduit runs, balanced panels, and compliant terminations."
+                  title="Project & Installation Photos"
+                  lede={
+                    galleryProjects.some((p) => p.isSample)
+                      ? "Sample photos show the kinds of work this template supports. Client sites use their own project photos."
+                      : "Recent electrical installation and equipment project photos."
+                  }
                 />
               </div>
             </div>
@@ -479,7 +506,7 @@ export default function HomePage() {
           </div>
 
           <h2 className="font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-paper tracking-tight">
-            Schedule an Assessment or Request an Upfront Estimate
+            {positioning?.closingHeadline || "Have an electrical project in mind?"}
           </h2>
 
           <p className="text-steel-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-sans">

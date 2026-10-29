@@ -74,28 +74,31 @@ export default function AboutPage() {
       : []),
   ];
 
-  const concretePractices = [
-    {
-      title: "Written estimate before work starts",
-      description:
-        "Every project receives an itemized written estimate specifying labor, components, and permits before any physical work begins.",
-    },
-    {
-      title: "Strict NEC code compliance & permitting",
-      description:
-        "We pull required municipal permits and complete all installations in full accordance with the current National Electrical Code.",
-    },
-    {
-      title: "Direct confirmation calls",
-      description:
-        "You speak directly with an electrician to confirm technical details and scheduling before arrival.",
-    },
-    {
-      title: "No unapproved work or hidden fees",
-      description:
-        "If site conditions reveal unexpected existing wiring issues, we stop and present options with written pricing before proceeding.",
-    },
-  ];
+  const concretePractices =
+    parsedClientConfig.practices && parsedClientConfig.practices.length > 0
+      ? parsedClientConfig.practices
+      : [
+          {
+            title: "Written estimates before work starts",
+            description:
+              "We review project requirements and provide a written estimate before physical work begins.",
+          },
+          {
+            title: "Clear arrival windows confirmed by phone",
+            description:
+              "We contact you in advance to confirm timing and project details so you are not left waiting.",
+          },
+          {
+            title: "Photos optional — never open a panel",
+            description:
+              "If you have a clear photo of the room or label, send it along. Never open equipment or approach exposed wiring.",
+          },
+          {
+            title: "We explain options in plain language",
+            description:
+              "We walk through your repair or installation options without technical jargon.",
+          },
+        ];
 
   return (
     <>
@@ -126,15 +129,15 @@ export default function AboutPage() {
               <SectionHeading
                 eyebrow="BACKGROUND"
                 eyebrowIndex="01 —"
-                title="Professional Electrical Craftsmanship"
+                title="Company Background & Operations"
                 lede="A local contractor focused on doing electrical work properly the first time."
               />
 
               <div className="text-steel-700 space-y-4 text-base font-sans leading-relaxed">
                 <p>
-                  {business.name} operates as a licensed electrical contractor serving residential
-                  and commercial properties in {business.address.city}, {business.address.state},
-                  and neighboring municipalities.
+                  {business.name} provides electrical services for residential and property manager
+                  clients in {business.address.city}, {business.address.state}, and neighboring
+                  municipalities.
                 </p>
                 <p>
                   Electrical work is not a cosmetic upgrade; it is critical physical infrastructure
@@ -266,7 +269,8 @@ export default function AboutPage() {
       <Section tone="dark" blueprint={true} className="py-14 sm:py-20">
         <Container size="narrow" className="text-center space-y-6">
           <h2 className="font-display text-2xl sm:text-3xl font-extrabold text-paper tracking-tight">
-            Work With a Licensed Electrical Contractor
+            {parsedClientConfig.positioning?.closingHeadline ||
+              "Have an electrical project in mind?"}
           </h2>
           <p className="text-steel-300 text-sm sm:text-base leading-relaxed max-w-xl mx-auto font-sans">
             Ready to discuss your project? Submit details online or call our office during business

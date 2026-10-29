@@ -13,6 +13,13 @@ const template = {
     timezone: required,
     address: { city: required, state: required, zip: required, showPublicly: false },
   },
+  positioning: {
+    heroHeadline: "Electrical Work Done Right. A Clear Way to Get Started.",
+    heroSubhead: required,
+    tagline: undefined,
+    closingHeadline: "Have an electrical project in mind?",
+  },
+  practices: [],
   serviceAreas: [],
   services: [],
   credentials: { licenses: [], insurance: { status: "unverified" as const }, certifications: [] },

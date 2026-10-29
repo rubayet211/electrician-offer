@@ -20,12 +20,7 @@ export function Step1Service({ formState, errors, onChange, onNext }: Step1Props
       value: service.slug,
       label: service.title,
       description: service.shortDescription || undefined,
-      icon: (
-        <ServiceIcon
-          name={service.icon || service.title}
-          className="w-5 h-5 text-steel-700"
-        />
-      ),
+      icon: <ServiceIcon name={service.icon || service.title} className="w-5 h-5 text-steel-700" />,
     };
   });
 

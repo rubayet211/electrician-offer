@@ -14,9 +14,11 @@ export function AssistantMount() {
   }
 
   return (
-    <AssistantWidget
-      phone={parsedClientConfig.business.phone}
-      phoneDisplay={parsedClientConfig.business.phoneDisplay}
-    />
+    <div className="[&>div]:!bottom-[88px] md:[&>div]:!bottom-5">
+      <AssistantWidget
+        phone={parsedClientConfig.business.phone}
+        phoneDisplay={parsedClientConfig.business.phoneDisplay}
+      />
+    </div>
   );
 }
