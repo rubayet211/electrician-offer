@@ -216,7 +216,7 @@ const demo = {
     timezone: "America/Chicago",
     address: { city: "Harbor Ridge", state: "Sample State", zip: "00000", showPublicly: false },
   },
-  hours: [{ days: "MondayFriday", open: "8:00 AM", close: "5:00 PM" }],
+  hours: [{ days: "Monday - Friday", open: "8:00 AM", close: "5:00 PM" }],
   emergency: {
     offered: false,
     verified: false,

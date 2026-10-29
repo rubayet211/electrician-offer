@@ -178,3 +178,9 @@ All components are located in [components/ui/](file:///J:/Axinofy/electrician/co
 - **Don't** use posed stock photos of models pretending to be tradespeople.
 - **Don't** write `transition: all`. Always declare the exact properties being animated.
 - **Don't** use rounded-full pill buttons or overly rounded corners (limit to 4px/6px).
+
+---
+
+## 8. Legal and Compliance Notice
+
+Privacy policy and terms of service pages are structured as templates reflecting the actual technical implementation of the application (zero-retention OpenRouter AI routing, 180-day photo retention, HMAC IP hashing for spam prevention, non-PII analytics tracking). Formal legal counsel review with the specific contracting client is required prior to production launch.
