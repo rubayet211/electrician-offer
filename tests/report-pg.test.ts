@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { runMigrations } from "./helpers/migrations";
 import { PGlite } from "@electric-sql/pglite";
 import { expect, it } from "vitest";
 import { PgStore } from "@/lib/store/pg-store";
@@ -6,8 +6,7 @@ import { monthlyReport } from "@/lib/reporting/monthly";
 it("counts measured report values from PostgreSQL while excluding demo requests", async () => {
   const db = new PGlite();
   try {
-    await db.exec(await readFile("lib/db/migrations/001_init.sql", "utf8"));
-    await db.exec(await readFile("lib/db/migrations/010_admin_reporting.sql", "utf8"));
+    await runMigrations((sql) => db.exec(sql));
     await db.query(
       "INSERT INTO analytics_events(id,type,page,created_at) VALUES ('a','phone_click','/','2026-10-01'),('b','estimate_cta_click','/','2026-10-01'),('c','form_start','/','2026-10-01')",
     );

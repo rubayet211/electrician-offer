@@ -1,20 +1,19 @@
 import { randomUUID } from "node:crypto";
 import { tool } from "ai";
 import { z } from "zod";
-import { aiInquirySchema, inquiryBaseSchema } from "@/lib/inquiries/schema";
+import { aiInquirySchema } from "@/lib/inquiries/schema";
 import type { Store } from "@/lib/store/types";
 
-export const estimateFieldsSchema = inquiryBaseSchema
-  .pick({
-    name: true,
-    phone: true,
-    zip: true,
-    serviceSlug: true,
-    description: true,
-    urgency: true,
-    email: true,
-  })
-  .extend({ zip: z.string().regex(/^\d{5}$/) });
+// Validation happens in execute so malformed field values produce a recoverable result.
+export const estimateFieldsSchema = z.object({
+  name: z.unknown().optional(),
+  phone: z.unknown().optional(),
+  zip: z.unknown().optional(),
+  serviceSlug: z.unknown().optional(),
+  description: z.unknown().optional(),
+  urgency: z.unknown().optional(),
+  email: z.unknown().optional(),
+});
 
 export async function prepareEstimateRequest(
   input: unknown,
@@ -37,12 +36,20 @@ export async function prepareEstimateRequest(
   const { consent: _consent, idempotencyKey: _key, ...summary } = parsed.data;
   void _consent;
   void _key;
-  await store.aiDrafts.create({
-    token: draftToken,
-    sessionId,
-    payload: summary,
-    expiresAt: new Date(+now + 900000).toISOString(),
-  });
+  const created = await store.aiDrafts.createLimited(
+    {
+      token: draftToken,
+      sessionId,
+      payload: summary,
+      expiresAt: new Date(+now + 900000).toISOString(),
+    },
+    5,
+  );
+  if (!created)
+    return {
+      status: "invalid" as const,
+      fieldErrors: { form: ["Draft limit reached. Please call the office."] },
+    };
   return { status: "awaiting_visitor_confirmation" as const, draftToken, summary };
 }
 

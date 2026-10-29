@@ -14,15 +14,15 @@ One isolated deployment + one database per client. No multi-tenant SaaS, no CMS,
 
 ### Plumbing weaknesses fixed here (do not inherit)
 
-| Plumbing                                    | Electrician                                                                                             |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| PG `ssl: { rejectUnauthorized: false }`     | TLS verified. `DATABASE_CA_CERT` optional; plain TCP only for localhost                                 |
-| Lead fallback to `os.tmpdir()` JSON         | Production requires `DATABASE_URL`; memory store only for tests/dev, refused when `NODE_ENV=production` |
-| In-memory `Map` rate limiter                | Postgres fixed-window counter (`INSERT … ON CONFLICT … RETURNING`), works across instances              |
-| Client-chosen chat `sessionId`              | Server-issued signed httpOnly cookie session                                                            |
-| Model tool writes lead directly             | Model can only _prepare a draft_; human clicks Confirm → server creates lead                            |
-| Report hardcodes "SSL Valid & Auto-Renewed" | Reports only measured facts; maintenance items are manual entries                                       |
-| Dedupe only                                 | Idempotency key (unique) + content-hash dedupe window                                                   |
+| Plumbing                                    | Electrician                                                                                |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| PG `ssl: { rejectUnauthorized: false }`     | TLS verified. `DATABASE_CA_CERT` optional; plain TCP only for localhost                    |
+| Lead fallback to `os.tmpdir()` JSON         | Production requires `DATABASE_URL`, except mock-AI demo hosting (disposable memory store)  |
+| In-memory `Map` rate limiter                | Postgres fixed-window counter (`INSERT … ON CONFLICT … RETURNING`), works across instances |
+| Client-chosen chat `sessionId`              | Server-issued signed httpOnly cookie session                                               |
+| Model tool writes lead directly             | Model can only _prepare a draft_; human clicks Confirm → server creates lead               |
+| Report hardcodes "SSL Valid & Auto-Renewed" | Reports only measured facts; maintenance items are manual entries                          |
+| Dedupe only                                 | Idempotency key (unique) + content-hash dedupe window                                      |
 
 ## 1. Layout
 
@@ -147,7 +147,7 @@ Store interface abstracts these; `MemoryStore` mirrors semantics for tests (incl
 Provider: OpenRouter, model `deepseek/deepseek-v4.1-flash` (verified 2026-10-29: exists, tools supported,
 ZDR endpoints available). Request `provider: { zdr: true, data_collection: "deny", require_parameters:
 true, max_price: { prompt: <cfg>, completion: <cfg> } }`, `usage: { include: true }`. No `models` fallback
-list. Timeout 20s, `maxOutputTokens` from config, temperature 0.2. Missing key / routing error → 503
+list. Provider fallback remains at its default so OpenRouter may use any endpoint satisfying the ZDR, data-collection and price filters. Timeout 20s, `maxOutputTokens` from config, temperature 0.2. Missing key / routing error → 503
 `{ unavailable: true }`, widget shows call + form CTAs.
 
 Sessions: `/api/ai-chat` issues `ai_sid` signed cookie (HMAC `AI_SESSION_SECRET`, httpOnly, SameSite=Lax,
@@ -161,9 +161,11 @@ Conversation & quota (atomic, store-backed):
 - First successful substantive reply → `commit` (reserved-1, used+1, session.counted=true).
 - Model failure before any success → `release` (reserved-1). Stale reservations (>10 min) released by cron/next reserve.
 - Each visitor message increments `visitor_messages`; >15 → 429 "conversation limit, please call or use form".
-- Rate limit 8 msgs/min per ip-hash. Max 4000 chars per message, last 20 messages sent to model.
+- Rate limit 8 msgs/min per ip-hash. Max 4000 chars per message; only client user text is forwarded, bounded to the latest 8,000 characters. Assistant history is not trusted or retained; the server supplies a recap with the recorded visitor-message count and no claimed transcript.
 - Token usage + OpenRouter reported cost accumulated per month. Pricing not hardcoded.
 - Exhausted: widget says assistant temporarily unavailable; call + form remain.
+
+Model output is buffered before delivery and checked as a whole for prohibited instructions and claims. Hazard replies use a separate 30/minute per-IP in-process abuse limit without database access; a shared edge limit is needed across instances.
 
 Safety (`lib/ai/safety.ts`): deterministic hazard detector (fire, smoke, sparks/arcing, burning smell,
 shock/electrocuted, downed/fallen power line, exposed live wires, water near panel). Match → server
@@ -218,6 +220,16 @@ photo". Touch targets ≥44px. Sticky mobile bar: Call + Request Estimate.
 
 `DATABASE_URL`, `DATABASE_CA_CERT?`, `RESEND_API_KEY`, `IP_HASH_SECRET`, `ADMIN_PASSWORD_HASH`,
 `ADMIN_SESSION_SECRET`, `AI_SESSION_SECRET`, `OPENROUTER_API_KEY?` (required if ai.enabled and not demo),
-`CRON_SECRET`, `DEMO_AI_LIVE?`, `NEXT_PUBLIC_SITE_ENV?`.
+`CRON_SECRET`, `REPORT_API_SECRET?`, `REPORT_API_URL?`, `DEMO_AI_LIVE?`, `NEXT_PUBLIC_SITE_ENV?`.
+
+`REPORT_API_SECRET` authorizes bearer access to the monthly report API. The monthly report script
+uses `REPORT_API_URL` and `REPORT_API_SECRET` to fetch that API and writes local `.reports` files.
+Without either admin credential, admin access is disabled. The login page returns HTTP 200 with an
+unavailable message because Next.js Server Components cannot set a 503 response; login and admin APIs
+return 503 when disabled.
+
+A production-hosted `mode: "demo"` site may omit `DATABASE_URL` only when `DEMO_AI_LIVE` is not
+`true`. It uses disposable, process-local memory; demo requests are never emailed. Live AI or any
+non-demo production deployment requires PostgreSQL.
 
 Vercel Hobby deployments cannot schedule a cron more than once per day; the 15-minute notification retry requires an eligible Vercel plan or an external scheduler.

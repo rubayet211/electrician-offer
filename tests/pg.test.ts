@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { runMigrations } from "./helpers/migrations";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { PgStore } from "@/lib/store/pg-store";
@@ -7,7 +7,7 @@ for (const kind of ["memory", "postgres"] as const) {
   describe(`${kind} store contract`, () => {
     it("limits concurrent quota reservations and rate hits", async () => {
       const db = kind === "postgres" ? new PGlite() : null;
-      if (db) await db.exec(await readFile("lib/db/migrations/001_init.sql", "utf8"));
+      if (db) await runMigrations((sql) => db.exec(sql));
       const store = db ? new PgStore(db) : new MemoryStore();
       const results = await Promise.all(
         Array.from({ length: 50 }, () => store.aiUsage.reserve("2026-10", 10)),

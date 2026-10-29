@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { parsedClientConfig } from "@/config/client.config";
+import { allowsDemoMemory } from "@/lib/config/env";
 import type {
   Store,
   Lead,
@@ -19,8 +21,11 @@ export class MemoryStore implements Store {
   private drafts = new Map<string, Draft>();
   private events: AnalyticsEvent[] = [];
   private leadEvents: { id: string; leadId: string; type: string; value?: string }[] = [];
-  constructor() {
-    if (process.env.NODE_ENV === "production")
+  constructor(allowDemo = false) {
+    if (
+      process.env.NODE_ENV === "production" &&
+      !(allowDemo && allowsDemoMemory(parsedClientConfig, process.env))
+    )
       throw new Error("Memory store is unavailable in production");
   }
   leads = {
@@ -162,6 +167,8 @@ export class MemoryStore implements Store {
     },
   };
   rateLimit = {
+    count: async (key: string, windowMs: number) =>
+      this.limits.get(`${key}:${Math.floor(Date.now() / windowMs) * windowMs}`) ?? 0,
     purgeOlderThan: async (date: Date) => {
       let count = 0;
       for (const key of this.limits.keys())
@@ -257,7 +264,17 @@ export class MemoryStore implements Store {
       return n;
     },
   };
+  private aiRequests = new Map<string, { requestId: string; at: number }>();
   aiSessions = {
+    beginRequest: async (id: string, requestId: string, now: Date) => {
+      const active = this.aiRequests.get(id);
+      if (!this.sessions.has(id) || (active && active.at > +now - 30000)) return false;
+      this.aiRequests.set(id, { requestId, at: +now });
+      return true;
+    },
+    endRequest: async (id: string, requestId: string) => {
+      if (this.aiRequests.get(id)?.requestId === requestId) this.aiRequests.delete(id);
+    },
     createLimited: async (session: Session, since: Date, limit: number) => {
       if (
         [...this.sessions.values()].filter(
@@ -344,12 +361,28 @@ export class MemoryStore implements Store {
     },
   };
   aiDrafts = {
+    createLimited: async (draft: Draft, limit: number) => {
+      if (!this.sessions.has(draft.sessionId)) throw new Error("Session not found");
+      if (
+        [...this.drafts.values()].filter((item) => item.sessionId === draft.sessionId).length >=
+        limit
+      )
+        return false;
+      if (this.drafts.has(draft.token)) throw new Error("Draft conflict");
+      this.drafts.set(draft.token, structuredClone(draft));
+      return true;
+    },
     claim: async (token: string, sessionId: string, key: string, now = new Date()) => {
       const d = this.drafts.get(token);
       if (
         !d ||
         d.sessionId !== sessionId ||
-        +new Date(d.expiresAt) <= +now ||
+        (+new Date(d.expiresAt) <= +now &&
+          !(
+            d.consumedAt &&
+            d.confirmationKey === key &&
+            [...this.leadMap.values()].some((lead) => lead.idempotencyKey === key)
+          )) ||
         (d.consumedAt && d.confirmationKey !== key)
       )
         return null;
@@ -372,11 +405,57 @@ export class MemoryStore implements Store {
     purgeExpired: async (now: Date) => {
       let n = 0;
       for (const [token, d] of this.drafts)
-        if (+new Date(d.expiresAt) < +now) {
+        if (
+          +new Date(d.expiresAt) < +now &&
+          !(
+            d.confirmationKey &&
+            [...this.leadMap.values()].some((lead) => lead.idempotencyKey === d.confirmationKey)
+          )
+        ) {
           this.drafts.delete(token);
           n++;
         }
       return n;
+    },
+  };
+  private adminEvents: { leadId: string; type: string; value?: string; createdAt: string }[] = [];
+  private maintenanceEntries: { date: string; minutes: number; description: string }[] = [];
+  admin = {
+    attachments: async (leadId: string) =>
+      structuredClone([...this.attachmentMap.values()].filter((a) => a.leadId === leadId)),
+    events: async (leadId: string) =>
+      structuredClone(this.adminEvents.filter((e) => e.leadId === leadId)),
+    update: async (leadId: string, status: string, note: string, booked: boolean) => {
+      const lead = this.leadMap.get(leadId);
+      if (!lead) return false;
+      lead.status = status;
+      const createdAt = new Date().toISOString();
+      this.adminEvents.push({ leadId, type: "status", value: status, createdAt });
+      if (note) this.adminEvents.push({ leadId, type: "note", value: note, createdAt });
+      const previous =
+        this.adminEvents.filter((e) => e.leadId === leadId && e.type === "booking").at(-1)
+          ?.value === "true";
+      if (previous !== booked)
+        this.adminEvents.push({ leadId, type: "booking", value: String(booked), createdAt });
+      return true;
+    },
+    bookingCount: async (start: Date, end: Date, excludeDemo: boolean) =>
+      this.adminEvents.filter(
+        (e) =>
+          e.type === "booking" &&
+          e.value === "true" &&
+          +new Date(e.createdAt) >= +start &&
+          +new Date(e.createdAt) < +end &&
+          (!excludeDemo || !this.leadMap.get(e.leadId)?.isDemo),
+      ).length,
+    maintenance: async (start: Date, end: Date) =>
+      structuredClone(
+        this.maintenanceEntries.filter(
+          (e) => +new Date(e.date) >= +start && +new Date(e.date) < +end,
+        ),
+      ),
+    addMaintenance: async (date: string, minutes: number, description: string) => {
+      this.maintenanceEntries.push({ date, minutes, description });
     },
   };
 }

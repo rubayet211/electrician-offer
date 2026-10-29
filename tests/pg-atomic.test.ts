@@ -1,11 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { runMigrations } from "./helpers/migrations";
 import { PGlite } from "@electric-sql/pglite";
 import { expect, it } from "vitest";
 import { PgStore } from "@/lib/store/pg-store";
 import type { Lead } from "@/lib/store/types";
 it("serializes concurrent identical lead submissions and rolls back invalid attachments", async () => {
   const db = new PGlite();
-  await db.exec(await readFile("lib/db/migrations/001_init.sql", "utf8"));
+  await runMigrations((sql) => db.exec(sql));
   const store = new PgStore(db);
   const now = new Date().toISOString();
   const base: Lead = {

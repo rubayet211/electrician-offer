@@ -163,6 +163,13 @@ export class PgStore implements Store {
       ).rows.length,
   };
   rateLimit = {
+    count: async (key: string, windowMs: number) =>
+      (
+        await this.one<{ count: number }>(
+          "SELECT count FROM rate_limits WHERE key=$1 AND window_start=$2",
+          [key, new Date(Math.floor(Date.now() / windowMs) * windowMs).toISOString()],
+        )
+      )?.count ?? 0,
     purgeOlderThan: async (date: Date) =>
       (
         await this.db.query("DELETE FROM rate_limits WHERE window_start<$1 RETURNING key", [
@@ -239,6 +246,17 @@ export class PgStore implements Store {
     },
   };
   aiSessions = {
+    beginRequest: async (id: string, requestId: string, now: Date) =>
+      !!(await this.one(
+        "UPDATE ai_sessions SET in_flight_id=$2,in_flight_at=$3 WHERE id=$1 AND (in_flight_at IS NULL OR in_flight_at <= $4) RETURNING id",
+        [id, requestId, now.toISOString(), new Date(+now - 30000).toISOString()],
+      )),
+    endRequest: async (id: string, requestId: string) => {
+      await this.db.query(
+        "UPDATE ai_sessions SET in_flight_id=NULL,in_flight_at=NULL WHERE id=$1 AND in_flight_id=$2",
+        [id, requestId],
+      );
+    },
     createLimited: async (s: Session, since: Date, limit: number) =>
       this.db.transaction(async (tx) => {
         await tx.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
@@ -373,10 +391,34 @@ export class PgStore implements Store {
       ).rows.length,
   };
   aiDrafts = {
+    createLimited: async (d: Draft, limit: number) =>
+      this.db.transaction(async (tx) => {
+        const session = await tx.query("SELECT id FROM ai_sessions WHERE id=$1 FOR UPDATE", [
+          d.sessionId,
+        ]);
+        if (!session.rows.length) throw new Error("Session not found");
+        const result = await tx.query<{ count: number }>(
+          "SELECT count(*)::int AS count FROM ai_lead_drafts WHERE session_id=$1",
+          [d.sessionId],
+        );
+        if (result.rows[0].count >= limit) return false;
+        await tx.query(
+          "INSERT INTO ai_lead_drafts(token,session_id,payload,expires_at,consumed_at,lead_id) VALUES ($1,$2,$3,$4,$5,$6)",
+          [
+            d.token,
+            d.sessionId,
+            JSON.stringify(d.payload),
+            d.expiresAt,
+            d.consumedAt ?? null,
+            d.leadId ?? null,
+          ],
+        );
+        return true;
+      }),
     claim: async (token: string, sessionId: string, key: string, now = new Date()) =>
       (
         await this.one<{ payload: unknown }>(
-          "UPDATE ai_lead_drafts SET consumed_at=COALESCE(consumed_at,$4), confirmation_key=$3 WHERE token=$1 AND session_id=$2 AND expires_at>$4 AND (consumed_at IS NULL OR confirmation_key=$3) RETURNING payload",
+          "UPDATE ai_lead_drafts SET consumed_at=COALESCE(consumed_at,$4), confirmation_key=$3 WHERE token=$1 AND session_id=$2 AND (expires_at>$4 OR (consumed_at IS NOT NULL AND confirmation_key=$3 AND EXISTS (SELECT 1 FROM leads WHERE idempotency_key=$3))) AND (consumed_at IS NULL OR confirmation_key=$3) RETURNING payload",
           [token, sessionId, key, now.toISOString()],
         )
       )?.payload ?? null,
@@ -402,9 +444,70 @@ export class PgStore implements Store {
       )?.payload ?? null,
     purgeExpired: async (now: Date) =>
       (
-        await this.db.query("DELETE FROM ai_lead_drafts WHERE expires_at<$1 RETURNING token", [
-          now.toISOString(),
-        ])
+        await this.db.query(
+          "DELETE FROM ai_lead_drafts d WHERE expires_at<$1 AND NOT EXISTS (SELECT 1 FROM leads l WHERE l.idempotency_key=d.confirmation_key) RETURNING token",
+          [now.toISOString()],
+        )
       ).rows.length,
+  };
+  admin = {
+    attachments: async (leadId: string) =>
+      (
+        await this.db.query<Attachment>(
+          'SELECT id, lead_id AS "leadId", name, content_type AS "contentType", data, created_at AS "createdAt" FROM lead_attachments WHERE lead_id=$1 ORDER BY created_at',
+          [leadId],
+        )
+      ).rows.map((row) => this.normalize(row)),
+    events: async (leadId: string) =>
+      (
+        await this.db.query<{ type: string; value?: string; createdAt: string }>(
+          'SELECT type,value,created_at AS "createdAt" FROM lead_events WHERE lead_id=$1 ORDER BY created_at,id',
+          [leadId],
+        )
+      ).rows.map((row) => this.normalize(row)),
+    update: async (leadId: string, status: string, note: string, booked: boolean) =>
+      this.db.transaction(async (tx) => {
+        const lead = (
+          await tx.query("UPDATE leads SET status=$2 WHERE id=$1 RETURNING id", [leadId, status])
+        ).rows[0];
+        if (!lead) return false;
+        const previous =
+          (
+            await tx.query<{ value: string }>(
+              "SELECT value FROM lead_events WHERE lead_id=$1 AND type='booking' ORDER BY created_at DESC,id DESC LIMIT 1",
+              [leadId],
+            )
+          ).rows[0]?.value === "true";
+        for (const [type, value] of [
+          ["status", status],
+          ...(note ? [["note", note]] : []),
+          ...(previous !== booked ? [["booking", String(booked)]] : []),
+        ])
+          await tx.query("INSERT INTO lead_events(id,lead_id,type,value) VALUES($1,$2,$3,$4)", [
+            randomUUID(),
+            leadId,
+            type,
+            value,
+          ]);
+        return true;
+      }),
+    bookingCount: async (start: Date, end: Date, excludeDemo: boolean) =>
+      (await this.one<{ count: number }>(
+        "SELECT count(*)::int AS count FROM lead_events e JOIN leads l ON l.id=e.lead_id WHERE e.type='booking' AND e.value='true' AND e.created_at >= $1 AND e.created_at < $2 AND (NOT $3 OR NOT l.is_demo)",
+        [start.toISOString(), end.toISOString(), excludeDemo],
+      ))!.count,
+    maintenance: async (start: Date, end: Date) =>
+      (
+        await this.db.query<{ date: string; minutes: number; description: string }>(
+          "SELECT date::text,minutes,description FROM maintenance_log WHERE date >= $1::date AND date < $2::date ORDER BY date",
+          [start.toISOString(), end.toISOString()],
+        )
+      ).rows,
+    addMaintenance: async (date: string, minutes: number, description: string) => {
+      await this.db.query(
+        "INSERT INTO maintenance_log(id,date,minutes,description) VALUES($1,$2,$3,$4)",
+        [randomUUID(), date, minutes, description],
+      );
+    },
   };
 }

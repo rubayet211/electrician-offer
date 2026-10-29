@@ -1,10 +1,11 @@
-import { readFile } from "node:fs/promises";
+import { runMigrations } from "./helpers/migrations";
 import { PGlite } from "@electric-sql/pglite";
 import { describe, expect, it } from "vitest";
 import { PgStore } from "@/lib/store/pg-store";
 import { MemoryStore } from "@/lib/store/memory-store";
 import type { Lead } from "@/lib/store/types";
-const time = new Date().toISOString();
+const now = new Date("2026-10-29T12:00:00Z");
+const time = now.toISOString();
 const lead: Lead = {
   id: "lead1",
   reference: "EL-123456",
@@ -31,7 +32,7 @@ for (const kind of ["memory", "postgres"] as const)
   describe(`${kind} full store`, () => {
     it("persists leads and attachments, filters, updates, analytics and drafts", async () => {
       const db = kind === "postgres" ? new PGlite() : null;
-      if (db) await db.exec(await readFile("lib/db/migrations/001_init.sql", "utf8"));
+      if (db) await runMigrations((sql) => db.exec(sql));
       const store = db ? new PgStore(db) : new MemoryStore();
       await store.leads.create(lead, [
         {
@@ -46,24 +47,24 @@ for (const kind of ["memory", "postgres"] as const)
       expect((await store.leads.findByIdempotencyKey(lead.idempotencyKey))?.reference).toBe(
         lead.reference,
       );
-      expect((await store.leads.findDuplicate("hash", 15))?.id).toBe(lead.id);
+      expect((await store.leads.findDuplicate("hash", 15, now))?.id).toBe(lead.id);
       expect(await store.leads.list({ serviceSlug: "panel-upgrades" })).toHaveLength(1);
       expect((await store.attachments.get("a"))?.contentType).toBe("image/jpeg");
       expect(await store.leads.updateStatus(lead.id, "contacted")).toBe(true);
       await store.leads.addEvent(lead.id, "status", "contacted");
       const claims = await Promise.all(
-        Array.from({ length: 20 }, () => store.leads.claimNotification(lead.id, new Date())),
+        Array.from({ length: 20 }, () => store.leads.claimNotification(lead.id, now)),
       );
       expect(claims.filter(Boolean)).toHaveLength(1);
       await store.leads.finishNotification(lead.id, "failed", "ProviderHttp500");
       expect((await store.leads.get(lead.id))?.notificationAttempts).toBe(1);
       expect(
-        await store.leads.list({ notificationStatus: ["failed"], retryBefore: new Date() }),
+        await store.leads.list({ notificationStatus: ["failed"], retryBefore: now }),
       ).toHaveLength(0);
       expect(
         await store.leads.list({
           notificationStatus: ["failed"],
-          retryBefore: new Date(Date.now() + 3600000),
+          retryBefore: new Date(+now + 3600000),
         }),
       ).toHaveLength(1);
       await store.analytics.record({
@@ -73,12 +74,8 @@ for (const kind of ["memory", "postgres"] as const)
         createdAt: time,
       });
       expect(
-        (
-          await store.analytics.countByType(
-            new Date(Date.now() - 60000),
-            new Date(Date.now() + 60000),
-          )
-        ).phone_click,
+        (await store.analytics.countByType(new Date(+now - 60000), new Date(+now + 60000)))
+          .phone_click,
       ).toBe(1);
       await store.aiSessions.create({
         id: "session",
@@ -95,13 +92,13 @@ for (const kind of ["memory", "postgres"] as const)
         token: "draft",
         sessionId: "session",
         payload: { answer: 1 },
-        expiresAt: new Date(Date.now() + 60000).toISOString(),
+        expiresAt: new Date(+now + 60000).toISOString(),
       });
       const drafts = await Promise.all(
-        Array.from({ length: 20 }, () => store.aiDrafts.consume("draft", "session")),
+        Array.from({ length: 20 }, () => store.aiDrafts.consume("draft", "session", now)),
       );
       expect(drafts.filter(Boolean)).toHaveLength(1);
-      expect(await store.attachments.purgeOlderThan(new Date(Date.now() + 60000))).toBe(1);
+      expect(await store.attachments.purgeOlderThan(new Date(+now + 60000))).toBe(1);
       await db?.close();
     });
   });

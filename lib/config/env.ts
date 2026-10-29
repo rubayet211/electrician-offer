@@ -14,6 +14,12 @@ const envSchema = z.object({
   DEMO_AI_LIVE: z.enum(["true", "false"]).optional(),
   NEXT_PUBLIC_SITE_ENV: z.enum(["demo", "staging", "production"]).optional(),
 });
+export function allowsDemoMemory(
+  config: unknown,
+  env: Record<string, string | undefined>,
+): boolean {
+  return (config as Partial<ClientConfig>).mode === "demo" && env.DEMO_AI_LIVE !== "true";
+}
 export function assertProductionReady(
   config: unknown = parsedClientConfig,
   env: Record<string, string | undefined> = process.env,
@@ -22,7 +28,6 @@ export function assertProductionReady(
   if (JSON.stringify(config).includes("__REQUIRED__"))
     problems.push("Client config contains required placeholders");
   for (const key of [
-    "DATABASE_URL",
     "IP_HASH_SECRET",
     "ADMIN_PASSWORD_HASH",
     "ADMIN_SESSION_SECRET",
@@ -30,6 +35,8 @@ export function assertProductionReady(
     "CRON_SECRET",
   ])
     if (!env[key]) problems.push(`${key} is required`);
+  if (!env.DATABASE_URL && !allowsDemoMemory(config, env))
+    problems.push("DATABASE_URL is required");
   const client = config as Partial<ClientConfig>;
   if (client.mode !== "demo" && !env.RESEND_API_KEY) problems.push("RESEND_API_KEY is required");
   if (env.NEXT_PUBLIC_SITE_ENV === "production") {
@@ -63,7 +70,11 @@ export function assertProductionReady(
 export function getServerEnv() {
   const env = envSchema.parse(process.env);
   if (process.env.NODE_ENV === "production") {
-    const problems = assertProductionReady(parsedClientConfig, env);
+    const problems = assertProductionReady(parsedClientConfig, env).filter(
+      (problem) =>
+        problem !== "ADMIN_PASSWORD_HASH is required" &&
+        problem !== "ADMIN_SESSION_SECRET is required",
+    );
     if (problems.length) throw new Error(problems.join("; "));
   }
   return env;

@@ -108,7 +108,7 @@ it("rolls inactive sessions into a new conversation", async () => {
   const now = new Date("2026-10-29T12:00:00Z");
   const first = await openSession(store, undefined, "visitor", now);
   expect(first).not.toBeNull();
-  const cookie = signSession(first!.id);
+  const cookie = signSession(first!.id, +now);
   const same = await openSession(store, cookie, "visitor", new Date(+now + 29 * 60000));
   expect(same?.id).toBe(first!.id);
   const later = await openSession(store, cookie, "visitor", new Date(+now + 61 * 60000));
@@ -132,4 +132,35 @@ it("assigns a hazard-only session's first reservation to the current business mo
   expect(await reserveConversation(store, "boundary", 10, next)).toBe(true);
   expect((await store.aiSessions.get("boundary"))?.month).toBe("2026-11");
   expect((await store.aiUsage.getMonth("2026-11"))?.reserved).toBe(1);
+});
+
+it("limits the real openSession path including released sessions", async () => {
+  const { openSession } = await import("@/lib/ai/quota");
+  const store = new MemoryStore();
+  const now = new Date("2026-10-29T12:00:00Z");
+  for (let i = 0; i < 4; i++) {
+    const session = await openSession(store, undefined, "same", now);
+    expect(session).not.toBeNull();
+    expect(await reserveConversation(store, session!.id, 100, now)).toBe(true);
+    await settleConversation(store, session!.id, false);
+  }
+  expect(await openSession(store, undefined, "same", now)).toBeNull();
+});
+
+it("expires signed session cookies after 24 hours", () => {
+  const now = Date.parse("2026-10-29T12:00:00Z");
+  const cookie = signSession("session", now);
+  expect(sessionFromCookie(cookie, now + 86399999)).toBe("session");
+  expect(sessionFromCookie(cookie, now + 86400000)).toBeNull();
+  expect(sessionFromCookie(cookie, now - 1)).toBeNull();
+});
+
+it("requires a secret outside tests and local demo development", async () => {
+  const { vi } = await import("vitest");
+  vi.stubEnv("AI_SESSION_SECRET", "");
+  vi.stubEnv("NODE_ENV", "production");
+  expect(() => signSession("session")).toThrow("AI_SESSION_SECRET is required");
+  vi.stubEnv("NODE_ENV", "development");
+  expect(signSession("session")).toBeTruthy();
+  vi.unstubAllEnvs();
 });

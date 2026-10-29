@@ -7,6 +7,7 @@ type Props = { draft: Draft; onEdit: () => void };
 
 export function ConfirmationCard({ draft, onEdit }: Props) {
   const [consent, setConsent] = useState(false);
+  const [note, setNote] = useState("");
   const [idempotencyKey] = useState(() => crypto.randomUUID());
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -19,7 +20,7 @@ export function ConfirmationCard({ draft, onEdit }: Props) {
       const response = await fetch("/api/ai-chat/confirm", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ draftToken: draft.draftToken, consent: true, idempotencyKey }),
+        body: JSON.stringify({ draftToken: draft.draftToken, consent: true, idempotencyKey, note }),
       });
       const result: {
         ok?: boolean;
@@ -46,6 +47,23 @@ export function ConfirmationCard({ draft, onEdit }: Props) {
       setBusy(false);
     }
   }
+  async function edit() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const response = await fetch("/api/ai-chat/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke", draftToken: draft.draftToken }),
+      });
+      if (!response.ok) throw new Error("Unable to edit this request. Please try again.");
+      onEdit();
+    } catch {
+      setMessage("Unable to edit this request. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <section
       className="my-3 rounded border border-steel-300 bg-steel-50 p-4"
@@ -58,7 +76,8 @@ export function ConfirmationCard({ draft, onEdit }: Props) {
           .map(([key, value]) => (
             <div key={key}>
               <dt className="inline font-semibold">
-                {key.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase())}
+                {({ serviceSlug: "Service", zip: "ZIP code" } as Record<string, string>)[key] ??
+                  key.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase())}
                 :{" "}
               </dt>
               <dd className="inline break-words">
@@ -69,6 +88,15 @@ export function ConfirmationCard({ draft, onEdit }: Props) {
       </dl>
       {!complete && (
         <>
+          <label className="mt-3 block text-sm">
+            Additional note (optional)
+            <textarea
+              className="mt-1 w-full rounded border border-steel-400 p-2"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              maxLength={500}
+            />
+          </label>
           <label className="mt-3 flex min-h-11 items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -88,7 +116,7 @@ export function ConfirmationCard({ draft, onEdit }: Props) {
             </button>
             <button
               type="button"
-              onClick={onEdit}
+              onClick={edit}
               disabled={busy}
               className="min-h-11 rounded border border-steel-500 px-4"
             >

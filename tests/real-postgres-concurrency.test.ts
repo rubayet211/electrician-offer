@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { runMigrations } from "./helpers/migrations";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { Pool } from "pg";
 import { PgStore, type Db, type DbQuery } from "@/lib/store/pg-store";
@@ -12,8 +12,7 @@ describe.skipIf(!url)("real PostgreSQL concurrency", () => {
     admin = new Pool({ connectionString: url });
     await admin.query(`CREATE SCHEMA ${schema}`);
     pool = new Pool({ connectionString: url, max: 20, options: `-c search_path=${schema}` });
-    await pool.query(await readFile("lib/db/migrations/001_init.sql", "utf8"));
-    await pool.query(await readFile("lib/db/migrations/002_ai_confirmation_key.sql", "utf8"));
+    await runMigrations((sql) => pool.query(sql));
     const adapter = (client: Pick<Pool, "query">): DbQuery => ({
       query: async <T>(sql: string, args?: unknown[]) => ({
         rows: (await client.query(sql, args)).rows as T[],

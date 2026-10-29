@@ -143,6 +143,7 @@ export const clientConfigSchema = z.object({
     enabled: z.boolean(),
     model: text.default("deepseek/deepseek-v4.1-flash"),
     monthlyConversationAllowance: z.number().int().nonnegative().default(100),
+    monthlyCostCapUsd: z.number().positive().default(5),
     maxVisitorMessagesPerConversation: z.number().int().positive().default(15),
     sessionInactivityMinutes: z.number().int().positive().default(30),
     maxOutputTokens: z.number().int().positive().default(500),

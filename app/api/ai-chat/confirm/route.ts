@@ -7,9 +7,17 @@ import { hashIp } from "@/lib/security/hash";
 import { getStore } from "@/lib/store";
 import { sessionFromCookie } from "@/lib/ai/quota";
 
-const schema = z
-  .object({ draftToken: z.uuid(), consent: z.literal(true), idempotencyKey: z.uuid() })
-  .strict();
+const schema = z.union([
+  z.object({ action: z.literal("revoke"), draftToken: z.uuid() }).strict(),
+  z
+    .object({
+      draftToken: z.uuid(),
+      consent: z.literal(true),
+      idempotencyKey: z.uuid(),
+      note: z.string().trim().max(500).optional(),
+    })
+    .strict(),
+]);
 export async function POST(request: Request): Promise<Response> {
   if (!isAllowedOrigin(request))
     return Response.json(
@@ -43,6 +51,10 @@ export async function POST(request: Request): Promise<Response> {
         { error: "Please try again later.", notification: "none" },
         { status: 429, headers: { "Retry-After": "60" } },
       );
+    if ("action" in parsed.data) {
+      const revoked = await store.aiDrafts.consume(parsed.data.draftToken, sessionId);
+      return Response.json({ ok: !!revoked }, { status: revoked ? 200 : 404 });
+    }
     const draft = await store.aiDrafts.claim(
       parsed.data.draftToken,
       sessionId,
@@ -54,7 +66,16 @@ export async function POST(request: Request): Promise<Response> {
         { status: 404 },
       );
     const result = await submitInquiry(
-      { ...draft, consent: true, idempotencyKey: parsed.data.idempotencyKey },
+      {
+        ...draft,
+        ...(parsed.data.note
+          ? {
+              description: `${"description" in draft ? String(draft.description) : ""}\n\nVisitor note: ${parsed.data.note}`,
+            }
+          : {}),
+        consent: true,
+        idempotencyKey: parsed.data.idempotencyKey,
+      },
       { source: "ai_chat", ipHash, store },
     );
     const { status, ...body } = result;

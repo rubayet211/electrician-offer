@@ -5,6 +5,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { MessageSquare } from "lucide-react";
 import { ConfirmationCard } from "./ConfirmationCard";
+import { InvalidFields } from "./InvalidFields";
+import { assistantErrorMessage } from "./error-message";
 
 type Props = { phone: string; phoneDisplay?: string };
 type Status = {
@@ -37,13 +39,15 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
   const [availability, setAvailability] = useState<Status | null>(null);
   const [dismissed, setDismissed] = useState<string[]>([]);
   const launcher = useRef<HTMLButtonElement>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const previousFocus = useRef<HTMLElement | null>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const transport = useMemo(() => new DefaultChatTransport({ api: "/api/ai-chat" }), []);
   const { messages, sendMessage, status, error } = useChat({ transport });
   const close = useCallback(() => {
     setOpen(false);
-    requestAnimationFrame(() => launcher.current?.focus());
+    requestAnimationFrame(() => (previousFocus.current ?? launcher.current)?.focus());
   }, []);
   useEffect(() => {
     if (!open) return;
@@ -61,6 +65,8 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
     return () => controller.abort();
   }, [open]);
   const launch = useCallback(() => {
+    previousFocus.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setOpen(true);
     void fetch("/api/analytics/event", {
       method: "POST",
@@ -72,6 +78,45 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
     window.addEventListener("assistant:open", launch);
     return () => window.removeEventListener("assistant:open", launch);
   }, [launch]);
+  useEffect(() => {
+    if (open && availability?.available) inputRef.current?.focus();
+  }, [open, availability]);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    const media = window.matchMedia("(max-width: 767px)");
+    const hidden = new Map<HTMLElement, boolean>();
+    const update = () => {
+      for (const [element, previous] of hidden) element.inert = previous;
+      hidden.clear();
+      if (!media.matches || !root.current) return;
+      let node: HTMLElement | null = root.current;
+      while (node?.parentElement) {
+        const parent: HTMLElement = node.parentElement;
+        for (const sibling of Array.from(parent.children)) {
+          if (sibling !== node && sibling instanceof HTMLElement) {
+            hidden.set(sibling, sibling.inert);
+            sibling.inert = true;
+          }
+        }
+        if (parent === document.body) break;
+        node = parent;
+      }
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      media.removeEventListener("change", update);
+      for (const [element, previous] of hidden) element.inert = previous;
+    };
+  }, [open, close]);
   function trap(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -103,7 +148,7 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
   }
   const busy = status === "submitted" || status === "streaming";
   return (
-    <div className="fixed bottom-5 right-5 z-50">
+    <div ref={root} className="fixed bottom-5 right-5 z-50">
       {!open && (
         <button
           ref={launcher}
@@ -123,7 +168,7 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
           aria-labelledby="assistant-title"
           tabIndex={-1}
           onKeyDown={trap}
-          className="flex h-[min(640px,calc(100dvh-120px))] w-[min(24rem,calc(100vw-2rem))] flex-col overflow-hidden rounded border border-steel-300 bg-white text-ink shadow-xl"
+          className="fixed inset-0 flex h-[100dvh] w-full flex-col overflow-hidden border border-steel-300 bg-white text-ink shadow-xl md:static md:h-[min(640px,calc(100dvh-120px))] md:w-[min(24rem,calc(100vw-2rem))] md:rounded"
         >
           <header className="flex items-start justify-between gap-2 bg-ink p-4 text-white">
             <div>
@@ -174,11 +219,16 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
             </div>
           ) : (
             <>
-              <div
-                className="flex-1 space-y-3 overflow-y-auto p-4"
-                aria-live="polite"
-                aria-relevant="additions text"
-              >
+              <div className="sr-only" aria-live="polite" aria-atomic="true">
+                {!busy && messages.at(-1)?.role === "assistant"
+                  ? messages
+                      .at(-1)
+                      ?.parts.filter((part) => part.type === "text")
+                      .map((part) => part.text)
+                      .join(" ")
+                  : ""}
+              </div>
+              <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {messages.map((message) => (
                   <div key={message.id} className="text-sm">
                     <p className="font-semibold">{message.role === "user" ? "You" : "Assistant"}</p>
@@ -193,6 +243,22 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
                         part.type === "tool-prepare_estimate_request" &&
                         part.state === "output-available"
                       ) {
+                        if (
+                          part.output &&
+                          typeof part.output === "object" &&
+                          "status" in part.output &&
+                          part.output.status === "invalid" &&
+                          "fieldErrors" in part.output &&
+                          part.output.fieldErrors &&
+                          typeof part.output.fieldErrors === "object"
+                        ) {
+                          return (
+                            <InvalidFields
+                              key={index}
+                              fields={Object.keys(part.output.fieldErrors)}
+                            />
+                          );
+                        }
                         const draft = asDraft(part.output);
                         return draft && !dismissed.includes(draft.draftToken) ? (
                           <ConfirmationCard
@@ -206,13 +272,18 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
                           />
                         ) : null;
                       }
+                      if (
+                        part.type === "tool-prepare_estimate_request" &&
+                        part.state === "output-error"
+                      )
+                        return <p key={index}>Please check your request details and try again.</p>;
                       return null;
                     })}
                   </div>
                 ))}
                 {error && (
                   <p role="alert">
-                    Assistant unavailable. Call {phoneDisplay} or{" "}
+                    {assistantErrorMessage(error)} Call {phoneDisplay} or{" "}
                     <a href="/contact" className="underline">
                       request an estimate
                     </a>

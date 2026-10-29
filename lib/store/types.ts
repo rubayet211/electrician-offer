@@ -96,6 +96,7 @@ export interface Store {
     purgeOlderThan(date: Date): Promise<number>;
   };
   rateLimit: {
+    count(key: string, windowMs: number): Promise<number>;
     purgeOlderThan(date: Date): Promise<number>;
     hit(
       key: string,
@@ -123,6 +124,8 @@ export interface Store {
     releaseStale(before: Date): Promise<number>;
   };
   aiSessions: {
+    beginRequest(id: string, requestId: string, now: Date): Promise<boolean>;
+    endRequest(id: string, requestId: string): Promise<void>;
     createLimited(session: Session, since: Date, limit: number): Promise<boolean>;
     reserve(
       id: string,
@@ -141,9 +144,21 @@ export interface Store {
     purgeOlderThan(date: Date): Promise<number>;
   };
   aiDrafts: {
+    createLimited(draft: Draft, limit: number): Promise<boolean>;
     claim(token: string, sessionId: string, key: string, now?: Date): Promise<unknown | null>;
     create(draft: Draft): Promise<void>;
     consume(token: string, sessionId: string, now?: Date): Promise<unknown | null>;
     purgeExpired(now: Date): Promise<number>;
+  };
+  admin: {
+    attachments(leadId: string): Promise<Attachment[]>;
+    events(leadId: string): Promise<{ type: string; value?: string; createdAt: string }[]>;
+    update(leadId: string, status: string, note: string, booked: boolean): Promise<boolean>;
+    bookingCount(start: Date, end: Date, excludeDemo: boolean): Promise<number>;
+    maintenance(
+      start: Date,
+      end: Date,
+    ): Promise<{ date: string; minutes: number; description: string }[]>;
+    addMaintenance(date: string, minutes: number, description: string): Promise<void>;
   };
 }

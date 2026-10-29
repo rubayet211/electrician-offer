@@ -39,9 +39,11 @@ export async function getAIStatus(): Promise<{
   if (!config.simulated && !process.env.OPENROUTER_API_KEY)
     return { available: false, reason: "missing_key" };
   const store = getStore();
-  await store.aiUsage.releaseStale(new Date(Date.now() - 600000));
   const usage = await store.aiUsage.getMonth(monthKey());
-  if ((usage?.used ?? 0) + (usage?.reserved ?? 0) >= config.monthlyConversationAllowance)
+  if (
+    (usage?.costUsd ?? 0) >= config.monthlyCostCapUsd ||
+    (usage?.used ?? 0) + (usage?.reserved ?? 0) >= config.monthlyConversationAllowance
+  )
     return { available: false, reason: "quota_exhausted" };
   return config.simulated ? { available: true, reason: "demo_simulated" } : { available: true };
 }

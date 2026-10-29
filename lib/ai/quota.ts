@@ -4,19 +4,27 @@ import type { Store } from "@/lib/store/types";
 function secret(): string {
   const value = process.env.AI_SESSION_SECRET;
   if (value) return value;
-  if (process.env.NODE_ENV === "production") throw new Error("AI_SESSION_SECRET is required");
-  return "local-ai-session-secret";
+  if (
+    process.env.NODE_ENV === "test" ||
+    (process.env.NODE_ENV === "development" && parsedClientConfig.mode === "demo")
+  )
+    return "local-ai-session-secret";
+  throw new Error("AI_SESSION_SECRET is required");
 }
 
-export function signSession(id: string): string {
-  return `${id}.${createHmac("sha256", secret()).update(id).digest("base64url")}`;
+export function signSession(id: string, now = Date.now()): string {
+  const payload = `${id}.${now}`;
+  return `${payload}.${createHmac("sha256", secret()).update(payload).digest("base64url")}`;
 }
 
-export function sessionFromCookie(value: string | undefined): string | null {
+export function sessionFromCookie(value: string | undefined, now = Date.now()): string | null {
   if (!value) return null;
   const parts = value.split(".");
-  if (parts.length !== 2 || !/^[a-zA-Z0-9-]{1,80}$/.test(parts[0])) return null;
-  const expected = Buffer.from(signSession(parts[0]));
+  if (parts.length !== 3 || !/^[a-zA-Z0-9-]{1,80}$/.test(parts[0]) || !/^\d+$/.test(parts[1]))
+    return null;
+  const issuedAt = Number(parts[1]);
+  if (!Number.isSafeInteger(issuedAt) || issuedAt > now || now - issuedAt >= 86400000) return null;
+  const expected = Buffer.from(signSession(parts[0], issuedAt));
   const actual = Buffer.from(value);
   return expected.length === actual.length && timingSafeEqual(expected, actual) ? parts[0] : null;
 }
@@ -27,15 +35,7 @@ export async function reserveConversation(
   allowance: number,
   now = new Date(),
 ): Promise<boolean> {
-  await store.aiUsage.releaseStale(new Date(+now - 600000));
-  return store.aiSessions.reserve(
-    id,
-    allowance,
-    dayStart(now),
-    getAIConfig().newConversationsPerVisitorPerDay,
-    now,
-    monthKey(now),
-  );
+  return store.aiSessions.reserve(id, allowance, undefined, undefined, now, monthKey(now));
 }
 
 export function settleConversation(store: Store, id: string, success: boolean): Promise<boolean> {
@@ -79,7 +79,7 @@ export async function openSession(
   now = new Date(),
 ) {
   const config = getAIConfig();
-  const id = sessionFromCookie(cookie);
+  const id = sessionFromCookie(cookie, +now);
   const existing = id ? await store.aiSessions.get(id) : null;
   if (
     existing &&
@@ -98,6 +98,11 @@ export async function openSession(
     counted: false,
     reservationState: "none" as const,
   };
-  await store.aiSessions.create(session);
-  return session;
+  return (await store.aiSessions.createLimited(
+    session,
+    dayStart(now),
+    config.newConversationsPerVisitorPerDay,
+  ))
+    ? session
+    : null;
 }

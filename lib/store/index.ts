@@ -1,5 +1,6 @@
 import { getPool } from "@/lib/db/pool";
-import { getServerEnv } from "@/lib/config/env";
+import { allowsDemoMemory, getServerEnv } from "@/lib/config/env";
+import { parsedClientConfig } from "@/config/client.config";
 import { MemoryStore } from "./memory-store";
 import { PgStore, type Db, type DbQuery } from "./pg-store";
 import type { Store } from "./types";
@@ -40,11 +41,13 @@ export function getStore(): Store {
         },
       };
       store = new PgStore(db);
-    } else store = new MemoryStore();
+    } else store = new MemoryStore(true);
   }
   if (
     process.env.NODE_ENV === "production" &&
-    (!process.env.DATABASE_URL || store instanceof MemoryStore)
+    ((!process.env.DATABASE_URL && !allowsDemoMemory(parsedClientConfig, process.env)) ||
+      (store instanceof MemoryStore &&
+        (!!process.env.DATABASE_URL || !allowsDemoMemory(parsedClientConfig, process.env))))
   )
     throw new Error("Production requires a database store");
   return store;
