@@ -23,7 +23,9 @@ export function buildKnowledge(config: ClientConfig): string {
       licenses.length || insurance || certifications.length
         ? { licenses, insurance, certifications }
         : "Ask the office about credentials.",
-    ...(config.emergency.verified ? { emergency: config.emergency } : {}),
+    emergency: config.emergency.verified
+      ? config.emergency
+      : "This business does not advertise emergency or same-day service. For fire, smoke, sparks or a shock, call 911.",
     estimateProcess: "Visitors may request an estimate for the office to review.",
     approvedKnowledge: config.ai.approvedKnowledge.filter(
       (item) => config.emergency.verified || !/emergency/i.test(item.topic),

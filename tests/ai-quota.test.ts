@@ -9,7 +9,7 @@ import {
 
 it("reserves only the allowance under concurrent new conversations", async () => {
   const store = new MemoryStore();
-  const now = new Date();
+  const now = new Date("2026-10-29T12:00:00Z");
   for (let i = 0; i < 30; i++)
     await store.aiSessions.create({
       id: String(i),
@@ -38,7 +38,7 @@ it("rejects forged session cookies", () => {
 
 it("atomically limits new sessions per visitor", async () => {
   const store = new MemoryStore();
-  const now = new Date();
+  const now = new Date("2026-10-29T12:00:00Z");
   const sessions = Array.from({ length: 10 }, (_, i) => ({
     id: String(i),
     visitorHash: "visitor",
@@ -59,7 +59,7 @@ it("atomically limits new sessions per visitor", async () => {
 
 it("allows only the original confirmation key to replay a claimed draft", async () => {
   const store = new MemoryStore();
-  const now = new Date();
+  const now = new Date("2026-10-29T12:00:00Z");
   await store.aiSessions.create({
     id: "session",
     visitorHash: "visitor",
@@ -84,7 +84,7 @@ it("allows only the original confirmation key to replay a claimed draft", async 
 
 it("does not share an in-flight reservation between model calls", async () => {
   const store = new MemoryStore();
-  const now = new Date().toISOString();
+  const now = new Date("2026-10-29T12:00:00Z").toISOString();
   await store.aiSessions.create({
     id: "one",
     visitorHash: "visitor",

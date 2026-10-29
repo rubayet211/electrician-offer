@@ -9,16 +9,12 @@ const AssistantWidget = dynamic(
 );
 
 export function AssistantMount() {
-  if (!parsedClientConfig.ai?.enabled) {
-    return null;
-  }
-
   return (
-    <div className="[&>div]:!bottom-[88px] md:[&>div]:!bottom-5">
+    <>
       <AssistantWidget
         phone={parsedClientConfig.business.phone}
         phoneDisplay={parsedClientConfig.business.phoneDisplay}
       />
-    </div>
+    </>
   );
 }

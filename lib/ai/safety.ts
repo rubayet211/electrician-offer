@@ -1,11 +1,12 @@
 const hazardPatterns = [
-  /\b(?:fire|flames?|arcing|sparks?|sparking|shocked|electrocut(?:ed|ion))\b/i,
-  /\b(?:burning|burnt)\s+(?:smell|odor|odour)\b|\b(?:smell|smells|smelling)\s+(?:of\s+)?burn(?:ing|t)\b/i,
-  /\bsmoke\b(?!\s+detectors?\b)/i,
-  /\b(?:power\s+lines?|electrical\s+lines?)\b.{0,30}\b(?:down|fallen|hanging)\b|\b(?:downed|fallen)\s+(?:power|electrical)\s+lines?\b/i,
-  /\b(?:exposed|live|hanging|dangling)\s+wires?\b|\bwires?\b.{0,20}\b(?:hanging|dangling|exposed)\b/i,
-  /\bwater\b.{0,30}\bpanel\b|\bpanel\b.{0,30}\bwater\b/i,
-  /\b(?:breaker|panel)\b.{0,25}\b(?:hot|melt(?:ing|ed)?)\b|\b(?:hot|melt(?:ing|ed)?)\b.{0,25}\b(?:breaker|panel)\b/i,
+  /\b(?:flames?|arcing|sparks?|sparking|electrocut(?:ed|ion)|zapped|shock)\b/i,
+  /\bshocked\b(?!\s+by\s+(?:the\s+)?(?:quote|price|cost))/i,
+  /\b(?:smok(?:e|ing)|fire)\b(?!\s+(?:alarms?|detectors?|pits?|codes?)\b)/i,
+  /\b(?:burning|burnt)\s+(?:smell|odor|odour)\b|\b(?:smell|smells|smelling)\b.{0,40}\bburn(?:ing|t)\b/i,
+  /\b(?:power\s+lines?|electrical\s+lines?)\b.{0,30}\b(?:down|fallen|hanging)\b|\b(?:downed|fallen|fell)\b.{0,30}\b(?:power|electrical)\s+lines?\b/i,
+  /\b(?:exposed|live|hanging|dangling)\s+wires?\b|\bwires?\b.{0,20}\b(?:hanging|dangling|exposed|sizzling)\b/i,
+  /\bwater\b.{0,40}\b(?:panel|breaker\s+box)\b|\b(?:panel|breaker\s+box)\b.{0,40}\bwater\b/i,
+  /\b(?:breaker|panel|outlet|wall\s+plate)\b.{0,40}\b(?:hot|melt(?:ing|ed)?|buzzing|burn\s+marks?|scorch(?:ed)?\s+marks?)\b|\b(?:hot|melt(?:ing|ed)?|scorch(?:ed)?\s+marks?)\b.{0,40}\b(?:breaker|panel|outlet|wall\s+plate)\b/i,
 ];
 
 export function isElectricalHazard(text: string): boolean {

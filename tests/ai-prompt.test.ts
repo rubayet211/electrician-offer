@@ -42,3 +42,11 @@ it("includes verified credentials and excludes unverified emergency knowledge", 
   expect(prompt).not.toContain("Pending certification");
   expect(prompt).not.toContain("unverified emergency hours");
 });
+
+it("states the fixed emergency guidance when emergency service is unverified", () => {
+  const config = structuredClone(parsedClientConfig);
+  config.emergency.verified = false;
+  expect(buildSystemPrompt(config)).toContain(
+    "This business does not advertise emergency or same-day service. For fire, smoke, sparks or a shock, call 911.",
+  );
+});

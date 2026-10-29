@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { MessageSquare } from "lucide-react";
 import { ConfirmationCard } from "./ConfirmationCard";
 
 type Props = { phone: string; phoneDisplay?: string };
@@ -59,14 +60,18 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
     dialog.current?.focus();
     return () => controller.abort();
   }, [open]);
-  function launch() {
+  const launch = useCallback(() => {
     setOpen(true);
     void fetch("/api/analytics/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ type: "ai_open", page: window.location.pathname }),
     }).catch(() => {});
-  }
+  }, []);
+  useEffect(() => {
+    window.addEventListener("assistant:open", launch);
+    return () => window.removeEventListener("assistant:open", launch);
+  }, [launch]);
   function trap(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
@@ -98,15 +103,16 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
   }
   const busy = status === "submitted" || status === "streaming";
   return (
-    <div className="fixed bottom-[88px] right-4 z-50 sm:bottom-5">
+    <div className="fixed bottom-5 right-5 z-50">
       {!open && (
         <button
           ref={launcher}
           type="button"
           onClick={launch}
-          className="min-h-11 rounded bg-ink px-5 font-semibold text-white shadow-lg"
+          className="hidden min-h-11 items-center gap-2 rounded border border-steel-300 bg-paper px-5 font-semibold text-ink shadow-technical md:flex"
         >
-          Ask the assistant
+          <MessageSquare size={18} aria-hidden="true" />
+          Ask a question
         </button>
       )}
       {open && (
@@ -124,7 +130,7 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
               <h2 id="assistant-title" className="text-lg font-bold">
                 {availability?.displayName || "Assistant"}
               </h2>
-              <p className="text-sm">AI assistant · can make mistakes</p>
+              <p className="text-sm">AI assistant Â· can make mistakes</p>
               {availability?.isDemo && (
                 <p className="text-xs">
                   {availability.isSimulated ? "Demo assistant - simulated responses" : "Demo site"}
@@ -137,7 +143,7 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
               aria-label="Close assistant"
               className="min-h-11 min-w-11 text-xl"
             >
-              ×
+              Ã—
             </button>
           </header>
           <div className="flex items-center justify-between gap-2 border-b border-steel-200 bg-steel-50 px-4 py-2 text-sm">
@@ -151,7 +157,7 @@ export function AssistantWidget({ phone, phoneDisplay = phone }: Props) {
           </div>
           {availability === null ? (
             <p className="p-4" role="status">
-              Checking availability…
+              Checking availabilityâ€¦
             </p>
           ) : !availability.available ? (
             <div className="p-4">
